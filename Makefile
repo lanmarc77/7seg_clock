@@ -43,7 +43,7 @@ TARGET =  clock_firmware
 
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = irmp.c TWI_Master.c clock.c 7seg_func.c ui_ir.c temp.c ui_display_modes.c ui_setup_menus.c usart.c main.c
+SRC = irmp.c TWI_Master.c clock.c 7seg_func.c ui_ir.c adc.c ui_display_modes.c ui_setup_menus.c usart.c i2c_modules.c main.c
 
 
 # List Assembler source files here.
@@ -166,10 +166,10 @@ LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 # Type: avrdude -c ?
 # to get a full listing.
 #
-AVRDUDE_PROGRAMMER = avr109
+AVRDUDE_PROGRAMMER = arduino
 
 # com1 = serial port. Use lpt1 to connect to parallel port.
-AVRDUDE_PORT = com5    # programmer connected to serial device
+AVRDUDE_PORT = com6    # programmer connected to serial device
 
 AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 #AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET).eep
@@ -189,7 +189,7 @@ AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 # to submit bug reports.
 #AVRDUDE_VERBOSE = -v -v
 
-AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER) -b 38400
+AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER) -b 57600
 AVRDUDE_FLAGS += $(AVRDUDE_NO_VERIFY)
 AVRDUDE_FLAGS += $(AVRDUDE_VERBOSE)
 AVRDUDE_FLAGS += $(AVRDUDE_ERASE_COUNTER)

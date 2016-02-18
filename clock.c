@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"
 #include "ui_display_modes.h"
 #include "clock.h"
-#include "temp.h"
+#include "i2c_modules.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
@@ -28,10 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "TWI_Master.h"
 #include "usart.h"
 
-
-volatile unsigned char RTC_detected=0;
-volatile unsigned char RTC_cmd=0;
-volatile unsigned char RTC_state=0;
 
 
 volatile unsigned char correct_timer=11;
@@ -50,7 +46,7 @@ volatile unsigned char INT_day=1;//1
 volatile unsigned char INT_month=1;//1
 volatile unsigned char INT_year=0;//0
 volatile unsigned char INT_dow=6;//6
-
+volatile unsigned char debug_char='0';
 
 /*
 	0=no signal
@@ -68,7 +64,6 @@ volatile signed int paused_save_value=-1;
 
 unsigned char I_second,I_hour,I_minute,I_year=14,I_dow=1,I_month,I_day;
 
-unsigned char rtc_messageBuf[25];
 
 volatile unsigned char dcf77_inverted_flag=0x00;
 volatile unsigned char filtered_dcf77=0;
@@ -171,6 +166,11 @@ void dcf77_isr_part(unsigned char dsd){
 					}
 					bit_clock_cnt=0;bit_clock_state=1;
 					min_temp=-1;hour_temp=-1;year_temp=-1;dow_temp=-1;mon_temp=-1;day_temp=-1;
+				}else{
+					if(bit_clock_state==3){
+						bit_clock_cnt=0;bit_clock_state=0;dcf_state=0;
+						min_temp=-1;hour_temp=-1;year_temp=-1;dow_temp=-1;mon_temp=-1;day_temp=-1;
+					}
 				}
 				dcf_signal_1length=0;
 				dcf_signal_last=1;
@@ -188,6 +188,7 @@ void dcf77_isr_part(unsigned char dsd){
 		if(bit_clock_cnt==1000){
 			bit_clock_cnt=0;
 		}
+
 
 		switch(bit_clock_state){
 			case 1: bit_cnt=0;bit_clock_state++;dcf_state=1;c=0;
@@ -260,8 +261,8 @@ void dcf77_isr_part(unsigned char dsd){
 													){
 														dcf_repeat_counter++;
 														old_min_temp=((min_temp&0x0F)+((min_temp>>4)&0x0F)*10);old_hour_temp=((hour_temp&0x0F)+((hour_temp>>4)&0x0F)*10);
-														if(dcf_repeat_counter>=3){
-															dcf_repeat_counter=0;
+														if(dcf_repeat_counter>=1){
+															dcf_repeat_counter=1;
 															bit_clock_state=3;
 														}
 													}else{
@@ -337,6 +338,8 @@ void send_usart_time(void){
 	usart_send_char((INT_hour/10)+48);usart_send_char((INT_hour%10)+48);
 	usart_send_char((INT_minute/10)+48);usart_send_char((INT_minute%10)+48);
 	usart_send_char((INT_second/10)+48);usart_send_char((INT_second%10)+48);
+	usart_send_char('-');usart_send_char(debug_char);
+
 	usart_send_char(13);usart_send_char(10);
 }
 
@@ -354,7 +357,9 @@ ISR(TIMER0_COMP_vect){//every 4ms
 		INT_month=(month&0x0F)+10*((month>>4)&0x0F);
 		INT_year=(year&0x0F)+10*((year>>4)&0x0F);
 		display_update|=1;
-		RTC_cmd=RTC_set_time;
+		if(I2C_RTC_detected){
+			I2C_RTC_setTime();
+		}
 		timer2_counter=0;
 		send_usart_time();
 	}else{
@@ -401,109 +406,18 @@ ISR(TIMER0_COMP_vect){//every 4ms
 					}
 				}
 			}
-		}else if((INT_second==30)&&(RTC_cmd==0)){
-			RTC_cmd=RTC_get_time;
-		}
-		if(SE95_cmd==0){
-			SE95_cmd=SE95_get_temp;
+
+		}else if(INT_second==30){
+			if(I2C_RTC_detected){
+				I2C_RTC_getTime();
+			}
 		}
 		send_usart_time();
 	}
 }
 
 
-signed char last_RTC_second=-1;
 
-
-void RTC_check_i2c_state_machine(void){
-	if(RTC_detected==0){
-		RTC_cmd=0;
-		RTC_state=0;
-		return;
-	}
-	if(SE95_state!=0){
-		return;
-	}
-	switch(RTC_state){
-		case 0:	if(RTC_cmd==RTC_get_time){
-					rtc_messageBuf[0]=(0x68<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
-					rtc_messageBuf[1]=0x00;//setup reading from register 00 means seconds
-					TWI_Start_Transceiver_With_Data( &rtc_messageBuf[0], 2 );
-					RTC_state=20;
-				}else if(RTC_cmd==RTC_set_time){
-					rtc_messageBuf[0]=(0x68<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
-					rtc_messageBuf[1]=0x00;//start writing from register 00 means seconds
-					cli();
-					rtc_messageBuf[2]=((INT_second/10)<<4)|(INT_second%10);
-					rtc_messageBuf[3]=((INT_minute/10)<<4)|(INT_minute%10);
-					rtc_messageBuf[4]=((INT_hour/10)<<4)|(INT_hour%10);
-					rtc_messageBuf[5]=(INT_dow%10);
-					rtc_messageBuf[6]=((INT_day/10)<<4)|(INT_day%10);
-					rtc_messageBuf[7]=((INT_month/10)<<4)|(INT_month%10);
-					rtc_messageBuf[8]=((INT_year/10)<<4)|(INT_year%10);
-					sei();
-					TWI_Start_Transceiver_With_Data( &rtc_messageBuf[0], 9 );
-					RTC_state=40;
-				}
-				break;
-		case 20:if(!(TWI_Transceiver_Busy() )){
-					if ( TWI_statusReg.lastTransOK ){
-						rtc_messageBuf[0]=(0x68<<TWI_ADR_BITS) | (TRUE<<TWI_READ_BIT);
-						TWI_Start_Transceiver_With_Data( &rtc_messageBuf[0], 20);
-						RTC_state++;
-					}else{
-						RTC_cmd=0;
-						RTC_state=0;
-					}
-				}
-				break;
-		case 21:if(!(TWI_Transceiver_Busy() )){
-					if ( TWI_statusReg.lastTransOK ){
-						TWI_Get_Data_From_Transceiver( &rtc_messageBuf[0], 20 );
-						if(last_RTC_second<0){
-							last_RTC_second=(rtc_messageBuf[1]>>4)*10+(rtc_messageBuf[1]&0x0F);
-							RTC_state=0;//reread the time
-							break;
-						}else{
-							if(last_RTC_second==(rtc_messageBuf[1]>>4)*10+(rtc_messageBuf[1]&0x0F)){
-								RTC_state=0;//reread the time
-								break;
-							}
-						}
-						cli();
-						timer2_counter=0;
-						INT_second=(rtc_messageBuf[1]>>4)*10+(rtc_messageBuf[1]&0x0F);
-						INT_minute=(rtc_messageBuf[2]>>4)*10+(rtc_messageBuf[2]&0x0F);
-						if(rtc_messageBuf[3]&0x40){//12 hour mode
-							INT_hour=((rtc_messageBuf[3]>>4)&0x01)*10+(rtc_messageBuf[3]&0x0F);
-							if(rtc_messageBuf[3]&0x20){
-								INT_hour+=12;
-							}
-						}else{//24 hour mode
-							INT_hour=((rtc_messageBuf[3]>>4)&0x03)*10+(rtc_messageBuf[3]&0x0F);
-						}
-						INT_dow=(rtc_messageBuf[4]&0x0F);
-						INT_day=(rtc_messageBuf[5]>>4)*10+(rtc_messageBuf[5]&0x0F);
-						INT_month=((rtc_messageBuf[6]>>4)&0x01)*10+(rtc_messageBuf[6]&0x0F);
-						INT_year=((rtc_messageBuf[7]>>4)&0x0F)*10+(rtc_messageBuf[7]&0x0F);
-						I2C_temp=rtc_messageBuf[0x12];
-						I2C_temp_frac=(rtc_messageBuf[0x13]>>6)&0x03;
-						last_RTC_second=-1;
-						sei();
-					}
-					RTC_cmd=0;
-					RTC_state=0;
-				}
-				break;
-		case 40:if(!(TWI_Transceiver_Busy() )){
-					if ( TWI_statusReg.lastTransOK ){
-					}
-					RTC_cmd=0;
-					RTC_state=0;
-				}
-				break;
-	}
-}
 
 
 void get_time(void){
@@ -517,8 +431,8 @@ void get_time(void){
 }
 
 void dcf77_init(void){
-	unsigned char i=0;
-	unsigned char messageBuf[25];
+	//unsigned char i=0;
+	//unsigned char messageBuf[25];
 		
 	//DCF signal input
 	DDRC&=~0x80;
@@ -527,7 +441,7 @@ void dcf77_init(void){
 	TCCR0=8|4;		//prescaler 256, CTC mode
 	TIMSK|=2;		//enable compare match interrupt
 
-	messageBuf[0]=(0x68<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
+/*	messageBuf[0]=(0x68<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 	messageBuf[1]=0x0F;
 	messageBuf[2]=0x00;
 	TWI_Start_Transceiver_With_Data( messageBuf, 3 );
@@ -544,7 +458,10 @@ void dcf77_init(void){
 		sei();
 	}
 	i=0;
-	
+	*/
+	if(I2C_RTC_detected){
+		I2C_RTC_getTime();
+	}
 }
 
 #endif

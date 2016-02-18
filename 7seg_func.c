@@ -116,7 +116,6 @@ unsigned char I_COLON_MODE=COLON_OFF;
 unsigned char I_BEEPER_MODE=BEEPER_OFF;
 unsigned char I_digits[4]={0x88,0x88,0x88,0x88};
 
-
 volatile unsigned char COLON_MODE=COLON_OFF;
 
 
@@ -188,9 +187,15 @@ unsigned char segments_ISR(void){
 									PORT_COLON_ON;
 								}
 								digit_counter++;
+								if((bright_value==0)&&(digit_counter==4)){
+									digit_counter=0;
+									br_counter=0;
+									display_sync_dim=1;
+								}
 							}else{
 								display_sync_dim=1;
 								br_counter++;
+								//if(br_counter>br_translate[bright_value/10]){
 								if(br_counter>bright_value){
 									digit_counter=0;
 									br_counter=0;
@@ -209,9 +214,15 @@ unsigned char segments_ISR(void){
 									if(dimm_value<250)PORT_COLON_ON;
 								}
 								digit_counter++;
+								if((dimm_value==0)&&(digit_counter==4)){
+									digit_counter=0;
+									br_counter=0;
+									display_sync_dim=1;
+								}
 							}else{
 								display_sync_dim=1;
 								br_counter++;
+								//if(br_counter>br_translate[dimm_value/10]){
 								if(br_counter>dimm_value){
 									digit_counter=0;
 									br_counter=0;
@@ -232,9 +243,15 @@ unsigned char segments_ISR(void){
 											PORT_COLON_ON;
 										}
 										digit_counter++;
+										if((bright_value==0)&&(digit_counter==4)){
+											digit_counter=0;
+											br_counter=0;
+											display_sync_dim=1;
+										}
 									}else{
 										display_sync_dim=1;
 										br_counter++;
+										//if(br_counter>br_translate[bright_value/10]){
 										if(br_counter>bright_value){
 											digit_counter=0;
 											br_counter=0;
@@ -258,9 +275,15 @@ unsigned char segments_ISR(void){
 											PORT_COLON_ON;
 										}
 										digit_counter++;
+										if((dimm_value==0)&&(digit_counter==4)){
+											digit_counter=0;
+											br_counter=0;
+											display_sync_dim=1;
+										}
 									}else{
 										display_sync_dim=1;
 										br_counter++;
+										//if(br_counter>br_translate[dimm_value/10]){
 										if(br_counter>dimm_value){
 											digit_counter=0;
 											br_counter=0;

@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "ui_ir.h"
 #include "clock.h"
 #include "7seg_func.h"
-#include "temp.h"
+#include "i2c_modules.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
@@ -33,11 +33,11 @@ volatile unsigned char show_mode=0;
 unsigned char old_second=0;
 volatile unsigned char display_update=0;
 unsigned char fixed_mode=0;
-
+ 
 unsigned char show_dot_flag=1;
 void show_dcf77_signal_dot(void){
 	if(show_dot_flag){
-		if((!RTC_detected && (no_dcf_signal>=(unsigned int)3600))||(RTC_detected && (no_dcf_signal>=(unsigned int)3600*12))){
+		if((!I2C_RTC_detected && (no_dcf_signal>=(unsigned int)3600))||(I2C_RTC_detected && (no_dcf_signal>=(unsigned int)3600*12))){
 			if(dcf_state==0){
 				I_digits[1]&=~0x80;
 			}else{
@@ -132,74 +132,37 @@ void fill_time(void){
 	show_dot_flag=1;
 }
 
-void fill_temp(unsigned char rtc_only){
-	if((SE95_detected)&&(!rtc_only)){
-		if(SE95_temp>=0){
-			I_digits[0]=SE95_temp/10;
-			I_digits[1]=(SE95_temp%10)|0x80;
-			I_digits[2]=((SE95_temp_frac*313)/100)/10;
-			I_digits[3]=L_C;
-			if(I_digits[0]==0){
-				I_digits[0]=L_NOTHING;
-			}
-		}else{
-			I_digits[0]=12;
-			I_digits[1]=(-SE95_temp)/10;
-			I_digits[2]=((-SE95_temp)%10)|0x80;
-			I_digits[3]=((SE95_temp_frac*313)/100)/10;
-			if(I_digits[1]==0){
-				I_digits[1]=I_digits[2];
-				I_digits[2]=I_digits[3];
+void fill_temp(void){
+	unsigned int temp=0;
+	if(I2C_TEMP_detected){
+		if(I2C_getTemp(&temp)){
+			if(temp>=0){
+				I_digits[0]=temp/100;
+				I_digits[1]=((temp%100)/10)|0x80;
+				I_digits[2]=temp%10;
 				I_digits[3]=L_C;
-			}
-		}
-	}else{
-		if(RTC_detected){
-			if(I2C_temp<0){
-				I_digits[0]=12;
-				I_digits[1]=(-I2C_temp)/10;
-				I_digits[2]=(-I2C_temp)%10|0x80;
-				switch(I2C_temp_frac){
-					case 0:I_digits[3]=L_0;
-							break;
-					case 1:I_digits[3]=L_3;
-							break;
-					case 2:I_digits[3]=L_5;
-							break;
-					case 3:I_digits[3]=L_8;
-							break;
+				if(I_digits[0]==0){
+					I_digits[0]=L_NOTHING;
 				}
+			}else{
+				I_digits[0]=L_minus;
+				I_digits[1]=-temp/100;
+				I_digits[2]=((-temp%100)/10)|0x80;
+				I_digits[3]=-temp%10;
 				if(I_digits[1]==0){
 					I_digits[1]=I_digits[2];
 					I_digits[2]=I_digits[3];
 					I_digits[3]=L_C;
 				}
-			}else{
-				I_digits[0]=I2C_temp/10;
-				I_digits[1]=I2C_temp%10|0x80;
-				switch(I2C_temp_frac){
-					case 0:I_digits[2]=L_0;
-							break;
-					case 1:I_digits[2]=L_3;
-							break;
-					case 2:I_digits[2]=L_5;
-							break;
-					case 3:I_digits[2]=L_8;
-							break;
-				}
-				I_digits[3]=L_C;
-				if(I_digits[0]==0){
-					I_digits[0]=L_NOTHING;
-				}
 			}
-		}else{
-			I_digits[0]=L_NOTHING;
-			I_digits[1]=L_NOTHING;
-			I_digits[2]=L_NOTHING;
-			I_digits[3]=L_NOTHING;
+	
 		}
+	}else{
+		I_digits[0]=L_minus;
+		I_digits[1]=L_minus;
+		I_digits[2]=L_minus;
+		I_digits[3]=L_minus;
 	}
-
 }
 
 
@@ -330,11 +293,15 @@ void TA_default(void){
 				}
 				if(check_schedule()==0){
 					switch(get_ir_code()){
-						case IR_POWER:	ta_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case IR_MUTE:	ta_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 										break;
 						case IR_CH_PLUS: 	ta_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 											break;
 						case IR_CH_MINUS: ta_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+											break;
+						case IR_POWER: 		if(I2C_MP3_detected){
+												I2C_MP3_talkTime();
+											}
 											break;
 					}
 				}
@@ -358,10 +325,11 @@ void TA_default(void){
 				break;
 
 		case 50:	start_stop_watch();
-					fill_temp(0);
+					fill_temp();
 					ta_display_mode=51;
 					break;
-		case 51:	if(get_stop_watch()*4>2000){//2seconds waiting
+		case 51:	fill_temp();
+					if(get_stop_watch()*4>2000){//2seconds waiting
 						stop_stop_watch();
 						display_update=1;
 						ta_display_mode=0;display_update=1;
@@ -519,11 +487,15 @@ void WBS_default(void){
 				}
 				if(check_schedule()==0){
 					switch(get_ir_code()){
-						case IR_POWER:	wbs_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case IR_MUTE:	wbs_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 										break;
 						case IR_CH_PLUS: 	wbs_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 											break;
 						case IR_CH_MINUS: wbs_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+											break;
+						case IR_POWER: 		if(I2C_MP3_detected){
+												I2C_MP3_talkTime();
+											}
 											break;
 					}
 				}
@@ -547,10 +519,11 @@ void WBS_default(void){
 				break;
 
 		case 50:	start_stop_watch();
-					fill_temp(0);
+					fill_temp();
 					wbs_display_mode=51;
 					break;
-		case 51:	if(get_stop_watch()*4>2000){//2seconds waiting
+		case 51:	fill_temp();
+					if(get_stop_watch()*4>2000){//2seconds waiting
 						stop_stop_watch();
 						display_update=1;
 						wbs_display_mode=0;display_update=1;
@@ -601,8 +574,12 @@ void bin_default(void){
 				}
 				if(check_schedule()==0){
 					switch(get_ir_code()){
-						case IR_POWER:	bin_display_mode=1;show_dot_flag=0;
+						case IR_MUTE:	bin_display_mode=1;show_dot_flag=0;
 										break;
+						case IR_POWER: 		if(I2C_MP3_detected){
+												I2C_MP3_talkTime();
+											}
+											break;
 					}
 				}
 				break;
@@ -729,11 +706,15 @@ void TE_default(void){
 				}
 				if(check_schedule()==0){
 					switch(get_ir_code()){
-						case IR_POWER:	te_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case IR_MUTE:	te_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 										break;
 						case IR_CH_PLUS: 	te_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 											break;
 						case IR_CH_MINUS: te_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+											break;
+						case IR_POWER: 		if(I2C_MP3_detected){
+												I2C_MP3_talkTime();
+											}
 											break;
 					}
 				}
@@ -757,10 +738,11 @@ void TE_default(void){
 				break;
 
 		case 50:	start_stop_watch();
-					fill_temp(0);
+					fill_temp();
 					te_display_mode=51;
 					break;
-		case 51:	if(get_stop_watch()*4>2000){//2seconds waiting
+		case 51:	fill_temp();
+					if(get_stop_watch()*4>2000){//2seconds waiting
 						stop_stop_watch();
 						display_update=1;
 						te_display_mode=0;display_update=1;
@@ -814,11 +796,15 @@ void c1_default(void){
 				}
 				if(check_schedule()==0){
 					switch(get_ir_code()){
-						case IR_POWER:	c1_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case IR_MUTE:	c1_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 										break;
 						case IR_CH_PLUS: 	c1_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 											break;
 						case IR_CH_MINUS: c1_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+											break;
+						case IR_POWER: 		if(I2C_MP3_detected){
+												I2C_MP3_talkTime();
+											}
 											break;
 					}
 				}
@@ -842,10 +828,11 @@ void c1_default(void){
 				break;
 
 		case 50:	start_stop_watch();
-					fill_temp(0);
+					fill_temp();
 					c1_display_mode=51;
 					break;
-		case 51:	if(get_stop_watch()*4>2000){//2seconds waiting
+		case 51:	fill_temp();
+					if(get_stop_watch()*4>2000){//2seconds waiting
 						stop_stop_watch();
 						display_update=1;
 						c1_display_mode=0;display_update=1;
@@ -893,7 +880,7 @@ void C2_default(void){
 					}else if((I_second%20>=10)&&(I_second%20<=14)){
 						fill_date();
 					}else if((I_second%20>=15)&&(I_second%20<=20)){
-						fill_temp(0);
+						fill_temp();
 						show_dot_flag=0;
 					}
 					sei();
@@ -903,9 +890,13 @@ void C2_default(void){
 				show_dcf77_signal_dot();
 				if(check_schedule()==0){
 					switch(get_ir_code()){
-						case IR_POWER:	C2_display_mode=1;show_dot_flag=0;
+						case IR_MUTE:	C2_display_mode=1;show_dot_flag=0;
 										I_COLON_MODE=COLON_OFF;
 										break;
+						case IR_POWER: 		if(I2C_MP3_detected){
+												I2C_MP3_talkTime();
+											}
+											break;
 					}
 				}
 				break;
@@ -954,12 +945,16 @@ void C3_default(void){
 				show_dcf77_signal_dot();
 				if(check_schedule()==0){
 					switch(get_ir_code()){
-						case IR_POWER:	C3_display_mode=2;show_dot_flag=0;
+						case IR_MUTE:	C3_display_mode=2;show_dot_flag=0;
 										I_COLON_MODE=COLON_OFF;
 										break;
 						case IR_CH_PLUS: 	C3_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 											break;
 						case IR_CH_MINUS: C3_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+											break;
+						case IR_POWER: 		if(I2C_MP3_detected){
+												I2C_MP3_talkTime();
+											}
 											break;
 					}
 				}
@@ -981,10 +976,11 @@ void C3_default(void){
 				}
 				break;
 		case 50:	start_stop_watch();
-					fill_temp(0);
+					fill_temp();
 					C3_display_mode=51;
 					break;
-		case 51:	if(get_stop_watch()*4>2000){//2seconds waiting
+		case 51:	fill_temp();
+					if(get_stop_watch()*4>2000){//2seconds waiting
 						stop_stop_watch();
 						display_update=1;
 						C3_display_mode=0;display_update=1;
@@ -1027,7 +1023,7 @@ void simple_default(void){
 						display_update=0;
 						I_COLON_MODE=COLON_OFF;
 						if(I_second%10==0){
-							fill_temp(1);
+							fill_temp();
 							show_dot_flag=0;
 						}else{
 							fill_time();
@@ -1042,8 +1038,12 @@ void simple_default(void){
 					show_dcf77_signal_dot();
 					if(check_schedule()==0){
 						switch(get_ir_code()){
-							case IR_POWER:	simple_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+							case IR_MUTE:	simple_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
 											break;
+							case IR_POWER: 		if(I2C_MP3_detected){
+													I2C_MP3_talkTime();
+												}
+												break;
 						}
 					}
 				break;
@@ -1098,14 +1098,14 @@ unsigned char version_default(void){
 		default: break;
 	}
 	switch(get_ir_code()){
-			case IR_POWER:	if(segment_mode==0){
+			case IR_MUTE:	if(segment_mode==0){
 								segment_mode=1;
 							}else{
 								segment_mode=0;
 							}
 							eeprom_write_byte ((uint8_t*)16, segment_mode);
 							break;
-			case IR_MUTE:	if(fixed_mode==0){
+			case IR_POWER:	if(fixed_mode==0){
 								fixed_mode=1;
 							}else{
 								fixed_mode=0;

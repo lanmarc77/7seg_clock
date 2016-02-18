@@ -51,7 +51,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 00E: C1 beep type changed for stop clock mode
 00F: added serial time output, changed DCF77 decoding, now finds a signal better under noisy conditions, changed license to GPLv3, added schedule based beeps
 010: removed automatic blink/zoom schedules for mode C1, fixed bug in all modes for first block zoom
-	 
+011: modularizes all I2C devices as drivers
+     bumped the number of schedules to 50
+	 added I2C mp3 player support
+	 fixed DCF decoding error which could lead to a one minute delay
+     changed every menu and input to only need a 4 button input (up, down, ok, back/cancel)
+	 better control of setting brightness
 
 TODO:
 - Prüfungszeitmodus für STA Abschlußpräsentationen
@@ -59,7 +64,6 @@ TODO:
 - Blockzeiten per Fernbedienung einstellen, im EEPROM speichern
 - Präsentationstimer in sekunden einstellbar
 - alarm clock with I am awake function and No ring on saturday/sunday mode
-- i²c audio player hinzufügen, danach: meditations timer, Schlafphasen wecker nach Vorbild der App Sanfter Wecker, stundensignal
 */
 
 /*
@@ -73,18 +77,21 @@ EEPROM usage (addresses in decimal notation):
 16: segment mode (CA/CC)
 17: fixed mode
 18: inverted dcf77 signal
+19: chosen MP3 track number for alarm
+20: continous mode on or off
 
 100:schedule setup 1
 105:schedule setup 2
 110:schedule setup 3
 ....
-195:schedule setup 20
+325:schedule setup 50
+330: unused
 
 */
 
 #define VERSION_1 0
 #define VERSION_2 1
-#define VERSION_3 0
+#define VERSION_3 1
 
 
 #endif

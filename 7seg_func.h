@@ -77,6 +77,7 @@ extern unsigned char I_digits[4];
 #define L_H 29
 #define L_U 30
 #define L_v 31
+#define L_minus 12
 
 #define L_b0 32
 #define L_b1 33

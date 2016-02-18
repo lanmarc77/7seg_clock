@@ -23,19 +23,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern void dcf77_init(void);
 extern void dcf77_isr_part(unsigned char dsd);
 extern void get_time(void);
-extern void RTC_check_i2c_state_machine(void);
 extern signed int get_stop_watch(void);
 extern void start_stop_watch(void);
 extern void stop_stop_watch(void);
 extern void pause_stop_watch(void);
 extern void unpause_stop_watch(void);
 
-
-extern volatile unsigned char RTC_state;
-#define RTC_get_time 1
-#define RTC_set_time 2
-extern volatile unsigned char RTC_cmd;
-extern volatile unsigned char RTC_detected;
 
 extern unsigned char I_second,I_hour,I_minute,I_year,I_dow,I_month,I_day;
 extern volatile unsigned char hour,min,second,day,month,year,dow;
@@ -47,5 +40,19 @@ extern volatile unsigned char new_time_flag;
 
 
 
+/* these variables give direct access to the internal clock system
+   use carefully, better not at all
+*/
+extern volatile unsigned char INT_hour;//0
+extern volatile unsigned char INT_minute;//0
+extern volatile unsigned char INT_second;//0
+extern volatile unsigned char INT_day;//1
+extern volatile unsigned char INT_month;//1
+extern volatile unsigned char INT_year;//0
+extern volatile unsigned char INT_dow;//6
+extern volatile signed int timer2_counter;
+
+
+extern volatile unsigned char debug_char;
 
 #endif

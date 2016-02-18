@@ -23,15 +23,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "ui_ir.h"
 #include "clock.h"
 #include "7seg_func.h"
+#include "i2c_modules.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
 
 
+unsigned char cont_mode=CONT_MODE_ON;
 
 unsigned char dimm_display_mode=0;
 unsigned char dimm_save_value=0;
 unsigned char bright_save_value=0;
+unsigned char brdimm_temp=0;
+
 //0 if the menu was exited
 //1 otherwise
 unsigned int setup_dimm(void){
@@ -40,89 +44,69 @@ unsigned int setup_dimm(void){
 		case 0:	dimm_save_value=dimm_value;bright_save_value=bright_value;stop_stop_watch();start_stop_watch();
 				I_SEG_MODE=SEG_DIM;
 				I_COLON_MODE=COLON_ON;
-				I_digits[0]=L_d;
-				I_digits[1]=L_NOTHING;
-				I_digits[2]=(25-dimm_value/10)/10;
-				I_digits[3]=(25-dimm_value/10)%10;
+				brdimm_temp=250-dimm_value;
 				dimm_display_mode++;
 				break;
-		case 1:	if(get_stop_watch()>(60000/4)*2){//120seconds waiting
-					dimm_display_mode=0;
-					return 0;
-				}else{
-					switch(get_ir_code()){
-						case IR_POWER: dimm_display_mode=0;
-										dimm_value=dimm_save_value;
-										bright_value=bright_save_value;
-										I_SEG_MODE=SEG_BRIGHT;
-										I_COLON_MODE=COLON_OFF;
-										return 0;
-										break;
-						case IR_CH_MINUS: 	if(dimm_value<=240){
-												dimm_value+=10;
-											}
-											stop_stop_watch();start_stop_watch();
-											break;
-						case IR_CH_PLUS: 	if(dimm_value>=10){
-												dimm_value-=10;
-											}
-											stop_stop_watch();start_stop_watch();
-											break;
-						case IR_MUTE: 	dimm_display_mode=2;
-										I_digits[0]=L_b;
-										I_digits[1]=L_NOTHING;
-										I_digits[2]=(25-bright_value/10)/10;
-										I_digits[3]=(25-bright_value/10)%10;
-										I_SEG_MODE=SEG_BRIGHT;
-										stop_stop_watch();start_stop_watch();
-										return 1;
-										break;
+		case 1:	switch(number_input(&brdimm_temp,0,250,(30000/4))){
+						case 3:
+						case 0:		dimm_display_mode=0;
+									dimm_value=dimm_save_value;
+									bright_value=bright_save_value;
+									I_SEG_MODE=SEG_BRIGHT;
+									I_COLON_MODE=COLON_OFF;
+									return 0;
+									break;
+						case 4: 	dimm_display_mode=2;
+									brdimm_temp=250-bright_value;
+									I_SEG_MODE=SEG_BRIGHT;
+									return 1;
+									break;
+					
 					}
-					I_digits[0]=L_d;
-					I_digits[1]=L_NOTHING;
-					I_digits[2]=(25-dimm_value/10)/10;
-					I_digits[3]=(25-dimm_value/10)%10;
-				}
-				break;
-		case 2:	if(get_stop_watch()>(60000/4)*2){//120seconds waiting
-					dimm_display_mode=0;
-					return 0;
-				}else{
-					switch(get_ir_code()){
-						case IR_POWER: dimm_display_mode=0;
-										dimm_value=dimm_save_value;
-										bright_value=bright_save_value;
-										I_SEG_MODE=SEG_BRIGHT;
-										I_COLON_MODE=COLON_OFF;
-										return 0;
-										break;
-						case IR_CH_MINUS: 	if(bright_value<=240){
-												bright_value+=10;
-											}
-											stop_stop_watch();start_stop_watch();
-											break;
-						case IR_CH_PLUS: 	if(bright_value>=10){
-												bright_value-=10;
-											}
-											stop_stop_watch();start_stop_watch();
-											break;
-						case IR_MUTE: 	dimm_display_mode=0;
-										eeprom_write_byte ((uint8_t*)11, dimm_value);
-										eeprom_write_byte ((uint8_t*)12, bright_value);
-										I_SEG_MODE=SEG_BRIGHT;
-										I_COLON_MODE=COLON_OFF;
-										stop_stop_watch();start_stop_watch();
-										return 0;
-										break;
+					dimm_value=250-brdimm_temp;
+					if(brdimm_temp>=100){
+						I_digits[0]=L_d;
+						I_digits[1]=((brdimm_temp)/100);
+						I_digits[2]=((brdimm_temp)%100)/10;
+						I_digits[3]=(brdimm_temp)%10;
+					}else{
+						I_digits[0]=L_d;
+						I_digits[1]=L_NOTHING;
+						I_digits[2]=(brdimm_temp)/10;
+						I_digits[3]=(brdimm_temp)%10;
 					}
-					I_digits[0]=L_b;
-					I_digits[1]=L_NOTHING;
-					I_digits[2]=(25-bright_value/10)/10;
-					I_digits[3]=(25-bright_value/10)%10;
-				}
-				break;
-
-
+					break;
+		case 2:	switch(number_input(&brdimm_temp,0,250,(30000/4))){
+						case 3:
+						case 0:		dimm_display_mode=0;
+									dimm_value=dimm_save_value;
+									bright_value=bright_save_value;
+									I_SEG_MODE=SEG_BRIGHT;
+									I_COLON_MODE=COLON_OFF;
+									return 0;
+									break;
+						case 4: 	dimm_display_mode=0;
+									eeprom_write_byte ((uint8_t*)11, dimm_value);
+									eeprom_write_byte ((uint8_t*)12, bright_value);
+									I_SEG_MODE=SEG_BRIGHT;
+									I_COLON_MODE=COLON_OFF;
+									return 0;
+									break;
+					
+					}
+					bright_value=250-brdimm_temp;
+					if(brdimm_temp>=100){
+						I_digits[0]=L_b;
+						I_digits[1]=((brdimm_temp)/100);
+						I_digits[2]=((brdimm_temp)%100)/10;
+						I_digits[3]=(brdimm_temp)%10;
+					}else{
+						I_digits[0]=L_b;
+						I_digits[1]=L_NOTHING;
+						I_digits[2]=(brdimm_temp)/10;
+						I_digits[3]=(brdimm_temp)%10;
+					}					
+					break;
 	}
 	return 1;
 }
@@ -146,42 +130,16 @@ unsigned int stop_time(void){
 				stop_display_mode++;
 				stop_trigger=0;
 				break;
-		case 1:	if(get_stop_watch()>(60000/4)*2){//120seconds waiting
-					stop_display_mode=0;
-					return 0;
-				}else{
-					switch(get_ir_code()){
-						case IR_POWER: stop_display_mode=0;
-										return 0;
-										break;
-						case IR_VOL_PLUS: 	stop_min_time+=1;stop_stop_watch();start_stop_watch();
-											break;
-						case IR_VOL_MINUS: 	stop_min_time-=1;stop_stop_watch();start_stop_watch();
-											break;
-						case IR_CH_PLUS: 	if(stop_min_time%5==0){
-												stop_min_time+=5;
-											}else{
-												stop_min_time+=(5-stop_min_time%5);
-											}
-											stop_stop_watch();start_stop_watch();
-											break;
-						case IR_CH_MINUS: 	if(stop_min_time>5){
-												if(stop_min_time%5==0){
-													stop_min_time-=5;
-												}else{
-													stop_min_time-=stop_min_time%5;
-												}
-											}
-											stop_stop_watch();start_stop_watch();
-											break;
-						case IR_MUTE: 	stop_display_mode=2;stop_stop_watch();start_stop_watch();
-											break;
-					}
-					if(stop_min_time>240){
-						stop_min_time=240;
-					}
-					if(stop_min_time<1){
-						stop_min_time=1;
+		case 1:		switch(number_input(&stop_min_time,1,240,2*(60000/4))){
+						case 0:		stop_display_mode=0;
+									return 0;
+									break;
+						case 3: 	stop_display_mode=0;
+									return 0;
+									break;
+						case 4:		stop_display_mode=2;
+									break;
+					
 					}
 					if(stop_min_time<100){
 						I_digits[0]=12;
@@ -194,7 +152,6 @@ unsigned int stop_time(void){
 						I_digits[2]=(stop_min_time%100)/10;
 						I_digits[3]=stop_min_time%10;
 					}
-				}
 				break;
 		case 2:	switch(get_ir_code()){
 					case IR_POWER: //stop_display_mode=2;I_SEG_MODE=SEG_BRIGHT;
@@ -399,7 +356,7 @@ unsigned int setup_time(void){
 								st_new_day=last_ir_code;
 								setup_time_display_mode++;
 							}else{
-								setup_time_display_mode=1;
+								setup_time_display_mode=0;
 							}
 							break;
 				}
@@ -506,39 +463,56 @@ unsigned int setup_time(void){
 
 
 unsigned char alarm_mode=ALARM_OFF;
+unsigned char save_alarm_mode=ALARM_OFF;
 unsigned char alarm_hour=0;
 unsigned char alarm_minute=0;
+unsigned char alarm_track=1;
 unsigned char digits_save[4];
 
 
 unsigned char check_alarm(void){
 	switch(alarm_mode){
 		case ALARM_OFF:	break;
-		case ALARM_ON:	if((alarm_hour==I_hour)&&(alarm_minute==I_minute)){
-							alarm_mode=ALARM_RINGING;
-							digits_save[0]=I_digits[0];
-							digits_save[1]=I_digits[1];
-							digits_save[2]=I_digits[2];
-							digits_save[3]=I_digits[3];
-						}
-						break;
-		case ALARM_RINGING:	I_BEEPER_MODE=BEEPER_ON;
-							I_SEG_MODE=SEG_ZOOM;
-							I_digits[0]=L_A;
+		case ALARM_ON:
+		case ALARM_ON_MP3:
+		case ALARM_ON_RADIO:	if((alarm_hour==I_hour)&&(alarm_minute==I_minute)){
+									save_alarm_mode=alarm_mode;
+									alarm_mode=ALARM_RINGING;
+									digits_save[0]=I_digits[0];
+									digits_save[1]=I_digits[1];
+									digits_save[2]=I_digits[2];
+									digits_save[3]=I_digits[3];
+									if((I2C_MP3_detected)&&(save_alarm_mode==ALARM_ON_MP3)){
+										I2C_MP3_playAlarm(alarm_track|0x80);
+									}else if((I2C_RADIO_detected)&&(save_alarm_mode==ALARM_ON_RADIO)){
+									}else{
+										I_BEEPER_MODE=BEEPER_ON;
+										I_SEG_MODE=SEG_ZOOM;
+									}
+									return 1;
+								}
+								break;
+		case ALARM_RINGING:	I_digits[0]=L_A;
 							I_digits[1]=L_L;
 							I_digits[2]=L_M;
 							I_digits[3]=L_NOTHING;
 							if(get_ir_code()!=0xFF){
 								alarm_mode=ALARM_PAUSED;
 								I_BEEPER_MODE=BEEPER_OFF;
+								if((I2C_MP3_detected)&&(save_alarm_mode==ALARM_ON_MP3)){
+									I2C_MP3_stopPlaying();
+								}
 								I_digits[0]=digits_save[0];
 								I_digits[1]=digits_save[1];
 								I_digits[2]=digits_save[2];
 								I_digits[3]=digits_save[3];
 							}
 							if(!((alarm_hour==I_hour)&&(alarm_minute==I_minute))){
-								alarm_mode=ALARM_ON;
+								alarm_mode=save_alarm_mode;
 								I_BEEPER_MODE=BEEPER_OFF;
+								if((I2C_MP3_detected)&&(save_alarm_mode==ALARM_ON_MP3)){
+									I2C_MP3_stopPlaying();
+								}
 								I_digits[0]=digits_save[0];
 								I_digits[1]=digits_save[1];
 								I_digits[2]=digits_save[2];
@@ -547,7 +521,7 @@ unsigned char check_alarm(void){
 							return 1;
 							break;
 		case ALARM_PAUSED:	if(!((alarm_hour==I_hour)&&(alarm_minute==I_minute))){
-								alarm_mode=ALARM_ON;
+								alarm_mode=save_alarm_mode;
 							}
 							break;
 	}
@@ -556,7 +530,7 @@ unsigned char check_alarm(void){
 
 
 unsigned char setup_alm_time_display_mode=0;
-unsigned char st_new_alm_hour=0,st_new_alm_min=0;
+unsigned char st_new_alm_hour=0,st_new_alm_min=0,st_new_alm_mode=0,st_new_alm_track=1;
 //0 if the menu was exited
 //1 otherwise
 unsigned int setup_alm_time(void){
@@ -578,9 +552,9 @@ unsigned int setup_alm_time(void){
 				break;
 
 		case 2:	switch(get_ir_input(2,0,10000,L_H,L_o,L_U,L_r)){//number of keys
-					case 0: setup_alm_time_display_mode=4;alarm_mode=ALARM_OFF;stop_stop_watch();start_stop_watch();
+					case 0: setup_alm_time_display_mode=6;alarm_mode=ALARM_OFF;stop_stop_watch();start_stop_watch();
 									break;
-					case 2: setup_alm_time_display_mode=4;stop_stop_watch();start_stop_watch();
+					case 2: setup_alm_time_display_mode=6;stop_stop_watch();start_stop_watch();
 									break;
 					case 5:	if((last_ir_code>=0) && (last_ir_code<=23)){
 								st_new_alm_hour=last_ir_code;
@@ -592,16 +566,21 @@ unsigned int setup_alm_time(void){
 				}
 				break;
 		case 3:	switch(get_ir_input(2,0,10000,L_M,L_I,L_n,L_NOTHING)){//number of keys
-					case 0: setup_alm_time_display_mode=4;alarm_mode=ALARM_OFF;stop_stop_watch();start_stop_watch();
+					case 0: setup_alm_time_display_mode=6;alarm_mode=ALARM_OFF;stop_stop_watch();start_stop_watch();
 									break;
-					case 2: setup_alm_time_display_mode=4;stop_stop_watch();start_stop_watch();
+					case 2: setup_alm_time_display_mode=6;stop_stop_watch();start_stop_watch();
 									break;
 					case 5:	if((last_ir_code>=0) && (last_ir_code<=59)){
 								st_new_alm_min=last_ir_code;
 								
 								alarm_hour=st_new_alm_hour;
 								alarm_minute=st_new_alm_min;
-								alarm_mode=ALARM_ON;
+								st_new_alm_track=alarm_track;if(st_new_alm_track==0) st_new_alm_track=1;
+								if(alarm_mode==ALARM_OFF){
+									st_new_alm_mode=ALARM_ON;
+								}else{
+									st_new_alm_mode=alarm_mode;
+								}
 								setup_alm_time_display_mode++;
 							}else{
 								setup_alm_time_display_mode=0;
@@ -609,9 +588,112 @@ unsigned int setup_alm_time(void){
 							break;
 				}
 				break;
-		case 4:	setup_alm_time_display_mode++;
+		case 4:	if(get_stop_watch()*4>10000){//10seconds waiting
+					setup_alm_time_display_mode=6;stop_stop_watch();start_stop_watch();
+				}
+				if((!I2C_MP3_detected)&&(!I2C_RADIO_detected)){
+					setup_alm_time_display_mode=6;stop_stop_watch();start_stop_watch();
+					break;
+				}
+				switch(get_ir_code()){
+					case IR_POWER: 	setup_alm_time_display_mode=6;alarm_mode=ALARM_OFF;
+									stop_stop_watch();start_stop_watch();
+									break;
+					case IR_CH_PLUS:  	switch(st_new_alm_mode){
+											case ALARM_OFF:	st_new_alm_mode=ALARM_ON;
+															break;
+											case ALARM_ON: if(I2C_RADIO_detected){
+																st_new_alm_mode=ALARM_ON_RADIO;
+															}else if(I2C_MP3_detected){
+																st_new_alm_mode=ALARM_ON_MP3;
+															}else{
+																st_new_alm_mode=ALARM_ON;
+															}
+															break;
+											case ALARM_ON_MP3:	st_new_alm_mode=ALARM_ON;
+																break;
+											case ALARM_ON_RADIO: 	if(I2C_MP3_detected){
+																		st_new_alm_mode=ALARM_ON_MP3;
+																	}else{
+																		st_new_alm_mode=ALARM_ON;
+																	}
+																break;
+										}
+										stop_stop_watch();start_stop_watch();
+										break;
+					case IR_CH_MINUS: 	switch(st_new_alm_mode){
+											case ALARM_OFF:	st_new_alm_mode=ALARM_ON;
+															break;
+											case ALARM_ON:	if(I2C_MP3_detected){
+																st_new_alm_mode=ALARM_ON_MP3;
+															}else if(I2C_RADIO_detected){
+																st_new_alm_mode=ALARM_ON_RADIO;
+															}else{
+																st_new_alm_mode=ALARM_ON;
+															}
+															break;
+											case ALARM_ON_MP3:	if(I2C_RADIO_detected){
+																	st_new_alm_mode=ALARM_ON_RADIO;
+																}else{
+																	st_new_alm_mode=ALARM_ON;
+																}
+																break;
+											case ALARM_ON_RADIO: st_new_alm_mode=ALARM_ON;
+																break;
+										}
+										stop_stop_watch();start_stop_watch();
+										break;
+					case IR_MUTE: 	
+									if(st_new_alm_mode==ALARM_ON_MP3){
+										setup_alm_time_display_mode=5;
+									}else if(st_new_alm_mode==ALARM_ON_RADIO){
+										setup_alm_time_display_mode=5;
+									}else{
+										alarm_mode=st_new_alm_mode;
+										setup_alm_time_display_mode=6;
+									}
+									stop_stop_watch();start_stop_watch();display_update=1;
+									break;
+				}
+				switch(st_new_alm_mode){
+					case ALARM_ON:I_digits[0]=L_b;I_digits[1]=L_E;I_digits[2]=L_E;I_digits[3]=L_P;
+							break;
+					case ALARM_ON_MP3:I_digits[0]=L_NOTHING;I_digits[1]=L_M;I_digits[2]=L_P;I_digits[3]=L_3;
+							break;
+					case ALARM_ON_RADIO:I_digits[0]=L_NOTHING;I_digits[1]=L_NOTHING;I_digits[2]=L_r;I_digits[3]=L_A;
+							break;
+				}
+				break;
+
+		case 5:	switch(number_input(&st_new_alm_track,0,99,30000/4)){
+					case 3:
+					case 0:	if(I2C_MP3_detected){
+								I2C_MP3_stopPlaying();
+							}
+							setup_alm_time_display_mode=6;alarm_mode=ALARM_OFF;display_update=1;
+							break;
+					case 2:if(I2C_MP3_detected){
+								I2C_MP3_playAlarm(st_new_alm_track|0x80);
+							}
+							break;
+					case 4:	if(I2C_MP3_detected){
+								I2C_MP3_stopPlaying();
+							}
+							alarm_track=st_new_alm_track;
+							alarm_mode=st_new_alm_mode;
+							setup_alm_time_display_mode=6;display_update=1;
+							break;
+				
+				}
+				I_digits[0]=L_NOTHING;
+				I_digits[1]=L_NOTHING;
+				I_digits[2]=st_new_alm_track/10;
+				I_digits[3]=st_new_alm_track%10;
+				break;
+				
+		case 6:	setup_alm_time_display_mode=7;
 				stop_stop_watch();start_stop_watch();
-				if(alarm_mode==ALARM_ON){
+				if((alarm_mode==ALARM_ON)||(alarm_mode==ALARM_ON_MP3)||(alarm_mode==ALARM_ON_RADIO)){
 					I_digits[0]=L_o;
 					I_digits[1]=L_n;
 					I_digits[2]=L_NOTHING;
@@ -624,10 +706,11 @@ unsigned int setup_alm_time(void){
 				}
 				break;
 				
-		case 5:	if(get_stop_watch()*4>2500){//2.5seconds waiting
+		case 7:	if(get_stop_watch()*4>2500){//2.5seconds waiting
 					eeprom_write_byte ((uint8_t*)13, alarm_mode);
 					eeprom_write_byte ((uint8_t*)14, alarm_hour);
 					eeprom_write_byte ((uint8_t*)15, alarm_minute);
+					eeprom_write_byte ((uint8_t*)19, alarm_track);
 					setup_alm_time_display_mode=0;
 					return 0;
 				}
@@ -640,12 +723,12 @@ unsigned int setup_alm_time(void){
 /*schedule storage space layout:
 0: time hour
 1: time minute
-2: beep mode (0=off, 1=short, 2=long, 3=mp3)
+2: beep mode (0=off, 1=short, 2=long, 3=mp3, 4=radio)
 3: dow mode (0=always, 1=weekdays only)
-4: later if beep mode is mp3 the number of the track e.g. 04 for 04.mp3
+4: the number of the track e.g. 04 for 04.mp3
 */
 
-#define MAX_SCHEDULES 20
+#define MAX_SCHEDULES 50
 #define SCHEDULE_OFFSET 100
 unsigned char schedules[5*MAX_SCHEDULES]={0};
 
@@ -655,8 +738,8 @@ void load_schedules(void){
 		schedules[i]=eeprom_read_byte((uint8_t*)i+SCHEDULE_OFFSET);
 	}
 	for(i=0;i<MAX_SCHEDULES;i++){
-		if( (schedules[i*5]>23)||(schedules[(i*5)+1]>59)||(schedules[(i*5)+2]>3)||(schedules[(i*5)+3]>1) ){
-			schedules[i*5]=0;schedules[(i*5)+1]=0;schedules[(i*5)+2]=0;schedules[(i*5)+3]=0;schedules[(i*5)+4]=0;
+		if( (schedules[i*5]>23)||(schedules[(i*5)+1]>59)||(schedules[(i*5)+2]>4)||(schedules[(i*5)+3]>1) ){
+			schedules[i*5]=0;schedules[(i*5)+1]=0;schedules[(i*5)+2]=0;schedules[(i*5)+3]=0;schedules[(i*5)+4]=1;
 		}
 		
 	}
@@ -690,7 +773,17 @@ unsigned char check_schedule(void){
 									schedule_beep_mode=20;//long beep
 									schedule_min_ring=I_minute;
 									return 1;
-								}else if(schedules[(i*5)+2]==3){//mp3 mode not supported yet
+								}else if(schedules[(i*5)+2]==3){//mp3 mode
+									if(I2C_MP3_detected){
+										stop_stop_watch();start_stop_watch();
+										schedule_beep_mode=30;//mp3 play
+										I2C_MP3_playSched(schedules[(i*5)+4]);
+									}else{
+										schedule_beep_mode=10;//short beep
+									}
+									schedule_min_ring=I_minute;
+									return 1;
+								}else if(schedules[(i*5)+2]==4){//radio mode not supported yet
 								}
 							}
 						}
@@ -701,7 +794,7 @@ unsigned char check_schedule(void){
 		case 11:if(get_stop_watch()*4>3000){
 					I_BEEPER_MODE=BEEPER_OFF;
 					stop_stop_watch();
-					schedule_beep_mode=30;//wait for next minute
+					schedule_beep_mode=100;//wait for next minute
 				}
 				return 1;
 				break;
@@ -710,12 +803,29 @@ unsigned char check_schedule(void){
 		case 21:if(get_stop_watch()*4>3000){
 					I_BEEPER_MODE=BEEPER_OFF;
 					stop_stop_watch();
-					schedule_beep_mode=30;//wait for next minute
+					schedule_beep_mode=100;//wait for next minute
+				}
+				return 1;
+				break;
+		case 30:if(get_stop_watch()>(50000/4)){
+					if(I2C_MP3_detected){
+						I2C_MP3_stopPlaying();
+					}
+					stop_stop_watch();
+					schedule_beep_mode=100;//wait for next minute
+				}
+				switch(get_ir_code()){
+					case IR_MUTE: if(I2C_MP3_detected){
+										I2C_MP3_stopPlaying();
+									}
+									stop_stop_watch();
+									schedule_beep_mode=100;//wait for next minute
+									break;
 				}
 				return 1;
 				break;
 		
-		case 30: if(I_minute!=schedule_min_ring){
+		case 100: if(I_minute!=schedule_min_ring){
 					schedule_beep_mode=0;
 					schedule_min_ring=-1;
 				 }
@@ -732,7 +842,7 @@ unsigned char schedule_new_hour=0;
 unsigned char schedule_new_minute=0;
 unsigned char schedule_new_beep=0;
 unsigned char schedule_new_dow=0;
-
+unsigned char schedule_new_track=0;
 
 //0 if the menu was exited
 //1 otherwise
@@ -743,36 +853,19 @@ unsigned int setup_schedule(void){
 				setup_schedule_place=1;
 				I_COLON_MODE=COLON_OFF;
 				break;
-		case 1:	if(get_stop_watch()*4>10000){//10seconds waiting
-						setup_schedule_display_mode=0;display_update=1;
-						return 0;
-				}
-				switch(get_ir_code()){
-					case IR_POWER: 	setup_schedule_display_mode=0;display_update=1;
-									return 0;
-									break;
-					case IR_VOL_PLUS: 	if(schedules[(setup_schedule_place-1)*5+2]!=0){
-											setup_schedule_display_mode=30;
-										}
-										stop_stop_watch();start_stop_watch();
-										break;
-					case IR_CH_PLUS: 	if(setup_schedule_place>1){
-											setup_schedule_place--;
-										}
-										stop_stop_watch();start_stop_watch();
-										break;
-					case IR_CH_MINUS: 	if(setup_schedule_place<MAX_SCHEDULES){
-											setup_schedule_place++;
-										}
-										stop_stop_watch();start_stop_watch();
-										break;
-					case IR_MUTE: 	setup_schedule_display_mode=2;stop_stop_watch();start_stop_watch();
-									schedule_new_hour=schedules[(setup_schedule_place-1)*5+0];
-									schedule_new_minute=schedules[(setup_schedule_place-1)*5+1];
-									schedule_new_beep=schedules[(setup_schedule_place-1)*5+2];
-									if(schedule_new_beep==0) schedule_new_beep=1;
-									schedule_new_dow=schedules[(setup_schedule_place-1)*5+3];
-									break;
+		case 1:	switch(number_input(&setup_schedule_place,1,50,30000/4)){
+					case 3:
+					case 0:	setup_schedule_display_mode=0;display_update=1;
+							return 0;
+							break;
+					case 4:	if(schedules[(setup_schedule_place-1)*5+2]!=0){
+								setup_schedule_display_mode=30;
+							}else{
+								setup_schedule_display_mode=33;
+							}
+							stop_stop_watch();start_stop_watch();
+							break;
+					
 				}
 				I_digits[0]=setup_schedule_place/10;
 				I_digits[1]=setup_schedule_place%10;
@@ -782,6 +875,7 @@ unsigned int setup_schedule(void){
 					case 1:I_digits[3]=L_S;break;
 					case 2:I_digits[3]=L_L;break;
 					case 3:I_digits[3]=L_M;break;
+					case 4:I_digits[3]=L_r;break;
 				}
 				break;
 		case 2:	switch(get_ir_input(2,0,10000,L_H,L_o,L_U,L_r)){//number of keys
@@ -819,23 +913,75 @@ unsigned int setup_schedule(void){
 				break;
 
 		case 4:	if(get_stop_watch()*4>10000){//10seconds waiting
-						setup_schedule_display_mode=1;stop_stop_watch();start_stop_watch();
+					setup_schedule_display_mode=1;stop_stop_watch();start_stop_watch();
 				}
 				switch(get_ir_code()){
 					case IR_POWER: 	setup_schedule_display_mode=10;
 									stop_stop_watch();start_stop_watch();
 									break;
-					case IR_CH_PLUS: 	if(schedule_new_beep>1){
+					case IR_CH_PLUS:  	switch(schedule_new_beep){
+											case 0: schedule_new_beep=1;
+													break;
+											case 1: if(I2C_RADIO_detected){
+														schedule_new_beep=4;
+													}else if(I2C_MP3_detected){
+														schedule_new_beep=3;
+													}else{
+														schedule_new_beep=2;
+													}
+													break;
+											case 2:	schedule_new_beep=1;
+													break;
+											case 3:	schedule_new_beep=2;
+													break;
+											case 4:	if(I2C_MP3_detected){
+														schedule_new_beep=3;
+													}else{
+														schedule_new_beep=2;
+													}
+													break;
+										}
+										/*if(schedule_new_beep>1){
 											schedule_new_beep--;
-										}
+										}*/
 										stop_stop_watch();start_stop_watch();
 										break;
-					case IR_CH_MINUS: 	if(schedule_new_beep<2){
+					case IR_CH_MINUS: 	switch(schedule_new_beep){
+											case 0: schedule_new_beep=1;
+													break;
+											case 1: schedule_new_beep=2;
+													break;
+											case 2:	if(I2C_MP3_detected){
+														schedule_new_beep=3;
+													}else if(I2C_RADIO_detected){
+														schedule_new_beep=4;
+													}else{
+														schedule_new_beep=1;
+													}
+													break;
+											case 3: if(I2C_RADIO_detected){
+														schedule_new_beep=4;
+													}else{
+														schedule_new_beep=1;
+													}
+													break;
+											case 4: schedule_new_beep=1;
+													break;
+										}
+										/*if(schedule_new_beep<2){
 											schedule_new_beep++;
-										}
+										}*/
 										stop_stop_watch();start_stop_watch();
 										break;
-					case IR_MUTE: 	setup_schedule_display_mode++;stop_stop_watch();start_stop_watch();
+					case IR_MUTE: 	if(schedule_new_beep==3){
+										setup_schedule_display_mode=40;
+										if(I2C_MP3_detected){
+											I2C_MP3_playSched(schedule_new_track);
+										}
+									}else{
+										setup_schedule_display_mode++;
+									}
+									stop_stop_watch();start_stop_watch();
 									break;
 				}
 				switch(schedule_new_beep){
@@ -845,10 +991,36 @@ unsigned int setup_schedule(void){
 							break;
 					case 2:I_digits[0]=L_NOTHING;I_digits[1]=L_NOTHING;I_digits[2]=L_NOTHING;I_digits[3]=L_L;
 							break;
-					case 3:I_digits[0]=L_M;I_digits[1]=L_P;I_digits[2]=L_3;I_digits[3]=L_NOTHING;
+					case 3:I_digits[0]=L_NOTHING;I_digits[1]=L_M;I_digits[2]=L_P;I_digits[3]=L_3;
+							break;
+					case 4:I_digits[0]=L_NOTHING;I_digits[1]=L_NOTHING;I_digits[2]=L_r;I_digits[3]=L_A;
 							break;
 				}
 				break;
+
+		case 40:	switch(number_input(&schedule_new_track,0,99,30000/4)){
+						case 3:
+						case 0:	if(I2C_MP3_detected){
+									I2C_MP3_stopPlaying();
+								}
+								setup_schedule_display_mode=0;display_update=1;
+								break;
+						case 2:if(I2C_MP3_detected){
+									I2C_MP3_playSched(schedule_new_track);
+								}
+								break;
+						case 4:	if(I2C_MP3_detected){
+									I2C_MP3_stopPlaying();
+								}
+								setup_schedule_display_mode=5;
+								break;
+					
+					}
+					I_digits[0]=L_NOTHING;
+					I_digits[1]=L_NOTHING;
+					I_digits[2]=schedule_new_track/10;
+					I_digits[3]=schedule_new_track%10;
+					break;
 
 		case 5:	if(get_stop_watch()*4>10000){//10seconds waiting
 						setup_schedule_display_mode=1;stop_stop_watch();start_stop_watch();
@@ -883,6 +1055,7 @@ unsigned int setup_schedule(void){
 				schedules[(setup_schedule_place-1)*5+1]=schedule_new_minute;
 				schedules[(setup_schedule_place-1)*5+2]=schedule_new_beep;
 				schedules[(setup_schedule_place-1)*5+3]=schedule_new_dow;
+				schedules[(setup_schedule_place-1)*5+4]=schedule_new_track;
 				save_schedule(setup_schedule_place-1);
 				stop_stop_watch();start_stop_watch();
 				break;
@@ -911,7 +1084,9 @@ unsigned int setup_schedule(void){
 							break;
 					case 2:I_digits[0]=L_NOTHING;I_digits[1]=L_NOTHING;I_digits[2]=L_NOTHING;I_digits[3]=L_L;
 							break;
-					case 3:I_digits[0]=L_M;I_digits[1]=L_P;I_digits[2]=L_3;I_digits[3]=L_NOTHING;
+					case 3:I_digits[0]=L_NOTHING;I_digits[1]=L_M;I_digits[2]=L_P;I_digits[3]=L_3;
+							break;
+					case 4:I_digits[0]=L_NOTHING;I_digits[1]=L_NOTHING;I_digits[2]=L_r;I_digits[3]=L_A;
 							break;
 				}
 				if(get_stop_watch()*4>1000){
@@ -927,16 +1102,34 @@ unsigned int setup_schedule(void){
 							break;
 				}
 				if(get_stop_watch()*4>1000){
-					setup_schedule_display_mode=1;
+					setup_schedule_display_mode=33;
 					stop_stop_watch();start_stop_watch();
 				}
 				break;
+		case 33:	if(get_stop_watch()*4>3000){//3seconds waiting
+						setup_schedule_display_mode=1;
+					}
+					switch(get_ir_code()){
+						case IR_POWER: 	setup_schedule_display_mode=1;
+										break;
+						case IR_MUTE: 	setup_schedule_display_mode=2;stop_stop_watch();start_stop_watch();
+										schedule_new_hour=schedules[(setup_schedule_place-1)*5+0];
+										schedule_new_minute=schedules[(setup_schedule_place-1)*5+1];
+										schedule_new_beep=schedules[(setup_schedule_place-1)*5+2];
+										if(schedule_new_beep==0) schedule_new_beep=1;
+										schedule_new_dow=schedules[(setup_schedule_place-1)*5+3];
+										schedule_new_track=schedules[(setup_schedule_place-1)*5+4];if((schedule_new_track>99)||(schedule_new_track==0)) schedule_new_track=1;
+										break;
+					}
+					I_digits[0]=L_S;I_digits[1]=L_E;I_digits[2]=L_t;I_digits[3]=L_NOTHING;
+					break;
 	}
 	return 1;
 }
 
 
 volatile unsigned char main_menu_display_mode=0;
+unsigned char amb_track=1;
 //0 if the menu was exited
 //1 still busy
 //2 if the show mode was changed
@@ -1044,7 +1237,9 @@ unsigned int main_menu_input(void){
 									return 0;
 									break;
 					case IR_CH_PLUS: 	stop_stop_watch();start_stop_watch();
-										if(fixed_mode){
+										if(I2C_MP3_detected){
+											main_menu_display_mode=6;
+										}else if(fixed_mode){
 											main_menu_display_mode=1;
 										}else{
 											main_menu_display_mode=10;
@@ -1060,7 +1255,73 @@ unsigned int main_menu_input(void){
 				I_digits[2]=L_L;
 				I_digits[3]=L_U;
 				break;
+		case 6:if(get_stop_watch()*4>10000){//10seconds waiting
+						main_menu_display_mode=0;display_update=1;
+						return 0;
+				}
+				switch(get_ir_code()){
+					case IR_POWER: 	main_menu_display_mode=0;display_update=1;
+									return 0;
+									break;
+					case IR_CH_PLUS: 	main_menu_display_mode=7;stop_stop_watch();start_stop_watch();
+										break;
+					case IR_CH_MINUS: 	main_menu_display_mode=5;stop_stop_watch();start_stop_watch();
+										break;
+					case IR_MUTE: 	main_menu_display_mode=100;stop_stop_watch();start_stop_watch();
+										break;
+				}
+				I_digits[0]=L_C;
+				I_digits[1]=L_o;
+				I_digits[2]=L_n;
+				I_digits[3]=L_t;
+				break;
 
+		case 7:if(get_stop_watch()*4>10000){//10seconds waiting
+						main_menu_display_mode=0;display_update=1;
+						return 0;
+				}
+				switch(get_ir_code()){
+					case IR_POWER: 	main_menu_display_mode=0;display_update=1;
+									return 0;
+									break;
+					case IR_CH_PLUS: 	main_menu_display_mode=8;stop_stop_watch();start_stop_watch();
+										break;
+					case IR_CH_MINUS: 	main_menu_display_mode=6;stop_stop_watch();start_stop_watch();
+										break;
+					case IR_MUTE: 	main_menu_display_mode=110;stop_stop_watch();start_stop_watch();
+										break;
+				}
+				I_digits[0]=L_A;
+				I_digits[1]=L_M;
+				I_digits[2]=L_b;
+				I_digits[3]=L_NOTHING;
+				break;
+
+		case 8:if(get_stop_watch()*4>10000){//10seconds waiting
+						main_menu_display_mode=0;display_update=1;
+						return 0;
+				}
+				switch(get_ir_code()){
+					case IR_POWER: 	main_menu_display_mode=0;display_update=1;
+									return 0;
+									break;
+					case IR_CH_PLUS: 	if(fixed_mode){
+											main_menu_display_mode=1;
+										}else{
+											main_menu_display_mode=10;
+										}
+										stop_stop_watch();start_stop_watch();
+										break;
+					case IR_CH_MINUS: 	main_menu_display_mode=7;stop_stop_watch();start_stop_watch();
+										break;
+					case IR_MUTE: 	main_menu_display_mode=120;stop_stop_watch();start_stop_watch();
+										break;
+				}
+				I_digits[0]=L_S;
+				I_digits[1]=L_L;
+				I_digits[2]=L_P;
+				I_digits[3]=L_NOTHING;
+				break;
 		case 10:	if(get_stop_watch()*4>10000){//10seconds waiting
 						main_menu_display_mode=0;display_update=1;
 						return 0;
@@ -1071,7 +1332,12 @@ unsigned int main_menu_input(void){
 									break;
 					case IR_CH_PLUS: 	main_menu_display_mode=1;stop_stop_watch();start_stop_watch();
 										break;
-					case IR_CH_MINUS: 	main_menu_display_mode=5;stop_stop_watch();start_stop_watch();
+					case IR_CH_MINUS: 	if(I2C_MP3_detected){
+											main_menu_display_mode=8;
+										}else{
+											main_menu_display_mode=5;
+										}
+										stop_stop_watch();start_stop_watch();
 										break;
 					case IR_MUTE: 	main_menu_display_mode=60;stop_stop_watch();start_stop_watch();
 										break;
@@ -1110,16 +1376,91 @@ unsigned int main_menu_input(void){
 						main_menu_display_mode=4;stop_stop_watch();start_stop_watch();
 					}
 					break;
+		case 100:	if(get_stop_watch()*4>10000){//10seconds waiting
+						main_menu_display_mode=6;stop_stop_watch();start_stop_watch();
+						eeprom_write_byte ((uint8_t*)20, cont_mode);
+						display_update=1;
+					}
+					switch(get_ir_code()){
+						case IR_POWER: 	main_menu_display_mode=6;display_update=1;
+										break;
+						case IR_CH_MINUS:
+						case IR_CH_PLUS: if(cont_mode==CONT_MODE_ON){
+											cont_mode=CONT_MODE_OFF;
+										}else{
+											cont_mode=CONT_MODE_ON;
+										}
+										stop_stop_watch();start_stop_watch();
+										break;
+						case IR_MUTE: 	main_menu_display_mode=6;
+										eeprom_write_byte ((uint8_t*)20, cont_mode);
+										stop_stop_watch();start_stop_watch();
+										break;
+					}
+					switch(cont_mode){
+						case CONT_MODE_ON:	I_digits[0]=L_o;
+											I_digits[1]=L_n;
+											I_digits[2]=L_NOTHING;
+											I_digits[3]=L_NOTHING;
+											break;
+						case CONT_MODE_OFF:	I_digits[0]=L_o;
+											I_digits[1]=L_F;
+											I_digits[2]=L_F;
+											I_digits[3]=L_NOTHING;
+											break;
+					}
+					break;
+		case 110:switch(number_input(&amb_track,0,99,30000/4)){
+					case 3:
+					case 0:	if(I2C_MP3_detected){
+								I2C_MP3_stopPlaying();
+							}
+							main_menu_display_mode=7;display_update=1;
+							break;
+					case 2:if(I2C_MP3_detected){
+								I2C_MP3_playAmb(amb_track|0x80);
+							}
+							break;
+					case 4:	if(I2C_MP3_detected){
+								I2C_MP3_playAmb(amb_track|0x80);
+							}
+							main_menu_display_mode=0;display_update=1;return 0;
+							break;
+				
+				}
+				I_digits[0]=L_NOTHING;
+				I_digits[1]=L_NOTHING;
+				I_digits[2]=amb_track/10;
+				I_digits[3]=amb_track%10;
+				break;
+		
+		case 120:switch(number_input(&amb_track,0,99,30000/4)){
+					case 3:
+					case 0:	if(I2C_MP3_detected){
+								I2C_MP3_stopPlaying();
+							}
+							main_menu_display_mode=8;display_update=1;
+							break;
+					case 2:if(I2C_MP3_detected){
+								I2C_MP3_playAmb(amb_track);
+							}
+							break;
+					case 4:	if(I2C_MP3_detected){
+								I2C_MP3_playAmb(amb_track);
+							}
+							main_menu_display_mode=0;display_update=1;return 0;
+							break;
+				}
+				I_digits[0]=L_NOTHING;
+				I_digits[1]=L_NOTHING;
+				I_digits[2]=amb_track/10;
+				I_digits[3]=amb_track%10;
+				break;
 
 		default: main_menu_display_mode=0;display_update=1;return 0;break;
 	}
 	return 1;
 }
-
-
-
-
-
 
 
 

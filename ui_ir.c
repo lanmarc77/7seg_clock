@@ -32,6 +32,7 @@ unsigned char ir_code_mode=0;
 unsigned char ir_code_i=0;
 unsigned int last_ir_code=0;
 unsigned int ir_code_timeout_counter=0;
+signed char ir_code_value_temp=-1;
 
 
 unsigned char get_ir_code(void){
@@ -47,7 +48,7 @@ unsigned char get_ir_code(void){
 			){
 				return IR_POWER;
 			}
-			if(	((irmp_data.protocol==IRMP_NEC_PROTOCOL)&&(irmp_data.command == 0x1A))||
+			/*if(	((irmp_data.protocol==IRMP_NEC_PROTOCOL)&&(irmp_data.command == 0x1A))||
 			((irmp_data.protocol==IRMP_RC5_PROTOCOL)&&(irmp_data.command == 16))
 			){
 				return IR_VOL_PLUS;
@@ -106,7 +107,7 @@ unsigned char get_ir_code(void){
 			((irmp_data.protocol==IRMP_RC5_PROTOCOL)&&(irmp_data.command == 9))
 			){
 				return IR_9;
-			}
+			}*/
 			if(	((irmp_data.protocol==IRMP_NEC_PROTOCOL)&&(irmp_data.command == 0x1E))||
 			((irmp_data.protocol==IRMP_RC5_PROTOCOL)&&(irmp_data.command == 32))
 			){
@@ -128,6 +129,84 @@ unsigned char get_ir_code(void){
 }
 
 
+unsigned char number_input_mode=0;
+
+/*returns
+0: number insert canceled
+1: number is still entered, but no change from previous call
+2: number is still entered, number changed from previous call
+3: timeout
+4: ok pressed
+*/
+unsigned char number_input(unsigned char *number,unsigned char min,unsigned char max,unsigned int timeout){
+
+	switch(number_input_mode){
+		case 0:		stop_stop_watch();start_stop_watch();
+					number_input_mode=1;
+					break;
+		case 1:		if(get_stop_watch()>timeout){
+						number_input_mode=0;
+						return 3;
+					}else{
+						switch(get_ir_code()){
+							case IR_POWER: number_input_mode=0;
+											return 0;
+											break;
+							case IR_CH_PLUS: 	if(get_stop_watch()>(400/4)){//longer than 400ms? since last keypress?
+													if(*number>=max){
+														*number=min;
+													}else{
+														*number+=1;
+													}
+												}else{
+													if(*number>=max){
+														*number=min;
+													}else{
+														if(*number%5==0){
+															*number+=5;
+														}else{
+															*number+=(5-*number%5);
+														}
+														if(*number>max){
+															*number=min;
+														}
+													}
+												}
+												stop_stop_watch();start_stop_watch();
+												return 2;
+												break;
+							case IR_CH_MINUS: 	if(get_stop_watch()>(400/4)){//longer than 400ms? since last keypress?
+													if(*number<=min){
+														*number=max;
+													}else{
+														*number-=1;
+													}
+												}else{
+													if(*number<=min){
+														*number=max;
+													}else{
+														if(*number>5){
+															if(*number%5==0){
+																*number-=5;
+															}else{
+																*number-=*number%5;
+															}
+														}
+													}
+												}
+												stop_stop_watch();start_stop_watch();
+												return 2;
+												break;
+							case IR_MUTE: 		stop_stop_watch();start_stop_watch();
+												number_input_mode=0;
+												return 4;
+												break;
+						}
+					}
+	}
+	return 1;
+}
+
 //returns the entered 4 digit code as int value
 //0 if the code entering was interrupted
 //1 if code is still entered
@@ -144,8 +223,6 @@ unsigned int code_input(void){
 	return 1;
 }
 
-
-
 //returns
 //0: Power key was pressed
 //1: no key was pressed
@@ -158,6 +235,7 @@ unsigned int get_ir_input(unsigned char keys, unsigned char pw_mode, unsigned in
 		case 0:	last_ir_code=0;
 				ir_code_i=0;
 				v=-1;
+				ir_code_value_temp=-1;
 				ir_code_timeout_counter=0;
 				stop_stop_watch();start_stop_watch();
 				ir_code_mode=1;
@@ -185,29 +263,53 @@ unsigned int get_ir_input(unsigned char keys, unsigned char pw_mode, unsigned in
 						case IR_POWER: ir_code_mode=0;
 										return 0;
 										break;
-						case IR_0: v=0;
-						case IR_1: if(v<0) v=1;
-						case IR_2: if(v<0) v=2;
-						case IR_3: if(v<0) v=3;
-						case IR_4: if(v<0) v=4;
-						case IR_5: if(v<0) v=5;
-						case IR_6: if(v<0) v=6;
-						case IR_7: if(v<0) v=7;
-						case IR_8: if(v<0) v=8;
-						case IR_9:	if(v<0) v=9;
-									last_ir_code=last_ir_code*10;
-									last_ir_code+=v;
-									ir_code_i++;
-									if(pw_mode){
-										I_digits[ir_code_i-1+(4-keys)]=12;
-									}else{
-										I_digits[ir_code_i-1+(4-keys)]=L_0+v;
-									}
-									if(ir_code_i==keys){
-										ir_code_mode=3;
-									}
-									stop_stop_watch();start_stop_watch();
-									break;
+						case IR_CH_PLUS:	if(ir_code_value_temp<0){
+												ir_code_value_temp=0;
+											}else{
+												ir_code_value_temp++;
+												if(ir_code_value_temp>9){
+													ir_code_value_temp=0;
+												}
+											}
+											I_digits[ir_code_i+(4-keys)]=L_0+ir_code_value_temp;
+											stop_stop_watch();start_stop_watch();
+											break;
+						case IR_CH_MINUS:	if(ir_code_value_temp<0){
+												ir_code_value_temp=0;
+											}else{
+												ir_code_value_temp--;
+												if(ir_code_value_temp<0){
+													ir_code_value_temp=9;
+												}
+											}
+											I_digits[ir_code_i+(4-keys)]=L_0+ir_code_value_temp;
+											stop_stop_watch();start_stop_watch();
+											break;
+						case IR_MUTE:		if(ir_code_value_temp>=0){
+												if(pw_mode){
+													I_digits[ir_code_i+(4-keys)]=L_minus;
+												}else{
+													I_digits[ir_code_i+(4-keys)]=ir_code_value_temp;
+												}
+												ir_code_i++;
+												last_ir_code=last_ir_code*10;
+												last_ir_code+=ir_code_value_temp;
+												ir_code_value_temp=-1;
+												if(ir_code_i==keys){
+													ir_code_mode=3;
+												}
+											}
+											stop_stop_watch();start_stop_watch();
+											break;
+					}
+					if(((get_stop_watch()*4)%500)>250){
+						I_digits[ir_code_i+(4-keys)]=L_NOTHING;
+					}else{
+						if(ir_code_value_temp==-1){//nothing entered yet for the current digit
+							I_digits[ir_code_i+(4-keys)]=L__;
+						}else{
+							I_digits[ir_code_i+(4-keys)]=ir_code_value_temp;
+						}
 					}
 				}
 				break;
@@ -221,7 +323,6 @@ unsigned int get_ir_input(unsigned char keys, unsigned char pw_mode, unsigned in
 	return 1;
 
 }
-
 
 void ir_init(void){
 	//RC5 signal

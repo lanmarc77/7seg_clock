@@ -27,15 +27,24 @@ extern void load_schedules(void);
 
 #define ALARM_OFF 0
 #define ALARM_ON 1
-#define ALARM_RINGING 2
-#define ALARM_PAUSED 3
+#define ALARM_ON_MP3 2
+#define ALARM_ON_RADIO 3
+#define ALARM_RINGING 4
+#define ALARM_PAUSED 5
 extern unsigned char alarm_mode;
 extern unsigned char alarm_hour;
 extern unsigned char alarm_minute;
+extern unsigned char alarm_track;
 
 #define STOP_BEEP_LONG 0
 #define STOP_BEEP_SHORT 1
 extern unsigned char stop_beep_mode;
+
+
+#define CONT_MODE_ON 0
+#define CONT_MODE_OFF 1
+extern unsigned char cont_mode;
+
 
 
 #endif

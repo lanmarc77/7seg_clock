@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <avr/wdt.h>
 #include <avr/sleep.h>
 #include <avr/eeprom.h>
+#include <avr/delay.h>
 #include "TWI_Master.h"
 #include "irmp.h"
 
@@ -31,8 +32,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "ui_ir.h"
 #include "clock.h"
 #include "7seg_func.h"
-#include "temp.h"
+#include "adc.h"
 #include "usart.h"
+#include "i2c_modules.h"
 
 
 
@@ -64,6 +66,8 @@ ISR(USART_TXC_vect){
 int main (void)
 {
 		unsigned char display_mode=0;
+		unsigned char old_second=60;
+		unsigned char i=0;
 
 		
 		wdt_enable(WDTO_15MS);
@@ -81,11 +85,13 @@ int main (void)
 		if(bright_value>250){bright_value=0;}
 
 		alarm_mode=eeprom_read_byte((uint8_t*)13);
-		if(alarm_mode>ALARM_ON){alarm_mode=ALARM_OFF;}
+		if(alarm_mode>ALARM_ON_RADIO){alarm_mode=ALARM_OFF;}
 		alarm_hour=eeprom_read_byte((uint8_t*)14);
 		if(alarm_hour>23){alarm_hour=0;}
 		alarm_minute=eeprom_read_byte((uint8_t*)15);
 		if(alarm_minute>59){alarm_minute=0;}
+		alarm_track=eeprom_read_byte((uint8_t*)19);
+		if(alarm_track>99){alarm_track=0;}
 
 		segment_mode = eeprom_read_byte((uint8_t*)16);
 		if(segment_mode>1){segment_mode=1;}
@@ -98,6 +104,8 @@ int main (void)
 			dcf77_inverted_flag=0x00;
 		}
 		
+		cont_mode = eeprom_read_byte((uint8_t*)20);
+		if(cont_mode>CONT_MODE_OFF){cont_mode=CONT_MODE_ON;}
 		
 		load_schedules();
 		
@@ -105,10 +113,14 @@ int main (void)
 		set_sleep_mode(SLEEP_MODE_IDLE);
 
 		TWI_Master_Initialise();	//initialize the TWI/I2C interface
-		segments_init();
-		dcf77_init();
 		ir_init();
-		temp_init();
+		ADC_init();
+		segments_init();
+		for(i=0;i<50;i++){//wait for slower I2C devices to initialize themselves
+			_delay_ms(5);wdt_reset();
+		}
+		I2C_init_modules();
+		dcf77_init();
 		
 		//timer 1 is dcf signal search, display numbers and IR reception
 		OCR1A=1067;
@@ -123,6 +135,7 @@ int main (void)
 		UCSRB=0x90|0x48;
 		UCSRC=0x86;
 
+
 		while(1){
 			cli();
 			refresh_display_content();
@@ -131,11 +144,10 @@ int main (void)
 			cli();
 			get_time();
 			sei();
-			RTC_check_i2c_state_machine();
-			SE95_check_i2c_state_machine();
+			I2C_check_state_machines();
 			switch(display_mode){
 				case 0:if(version_default()==0){
-							if(RTC_detected) {
+							if(I2C_RTC_detected) {
 								display_mode=2;//2=default
 							}else{
 								display_mode=1;
@@ -174,8 +186,16 @@ int main (void)
 								case 6:C2_default();break;
 								case 7:C3_default();break;
 							}
-							break;
 						}
+						if(I_second!=old_second){
+							if(I_second==0){
+								if((I2C_MP3_detected)&&(cont_mode==CONT_MODE_ON)){
+									I2C_MP3_playCont();
+								}							
+							}
+							old_second=I_second;
+						}
+						break;
 			}
 		}
 }
