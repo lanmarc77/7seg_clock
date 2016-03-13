@@ -53,7 +53,7 @@ unsigned char brdimm_temp=0;
 //0 if the menu was exited
 //1 otherwise
 unsigned int setup_dimm(void){
-	char c[4];
+	char c[8];c[1]=' ';c[3]=':';c[5]=' ';c[7]=' ';
 	switch(dimm_display_mode){
 		case 0:	dimm_save_value=display_get_dark_level();bright_save_value=display_get_bright_level();clock_stop_stop_watch();clock_start_stop_watch();
 				display_set_mode(DISPLAY_7SEG_DIM);
@@ -78,16 +78,16 @@ unsigned int setup_dimm(void){
 					display_set_dark_level(250-brdimm_temp);
 					if(brdimm_temp>=100){
 						c[0]='d';
-						c[1]=((brdimm_temp)/100)+48;
-						c[2]=((brdimm_temp)%100)/10+48;
-						c[3]=(brdimm_temp)%10+48;
+						c[2]=((brdimm_temp)/100)+48;
+						c[4]=((brdimm_temp)%100)/10+48;
+						c[6]=(brdimm_temp)%10+48;
 					}else{
 						c[0]='d';
-						c[1]=' ';
-						c[2]=(brdimm_temp)/10+48;
-						c[3]=(brdimm_temp)%10+48;
+						c[2]=' ';
+						c[4]=(brdimm_temp)/10+48;
+						c[6]=(brdimm_temp)%10+48;
 					}
-					display_set_text(&c[0]);
+					display_set_time(&c[0]);
 					break;
 		case 2:	switch(ui_input_number(&brdimm_temp,0,250,(30000/4))){
 						case 3:
@@ -108,16 +108,16 @@ unsigned int setup_dimm(void){
 					display_set_bright_level(250-brdimm_temp);
 					if(brdimm_temp>=100){
 						c[0]='b';
-						c[1]=((brdimm_temp)/100)+48;
-						c[2]=((brdimm_temp)%100)/10+48;
-						c[3]=(brdimm_temp)%10+48;
+						c[2]=((brdimm_temp)/100)+48;
+						c[4]=((brdimm_temp)%100)/10+48;
+						c[6]=(brdimm_temp)%10+48;
 					}else{
 						c[0]='b';
-						c[1]=L' ';
-						c[2]=(brdimm_temp)/10+48;
-						c[3]=(brdimm_temp)%10+48;
+						c[2]=L' ';
+						c[4]=(brdimm_temp)/10+48;
+						c[6]=(brdimm_temp)%10+48;
 					}					
-					display_set_text(&c[0]);
+					display_set_time(&c[0]);
 					break;
 	}
 	return 1;
@@ -1461,14 +1461,14 @@ unsigned int ui_menues_main_menu_input(void){
 					break;
 		case 60:	c=set_show_mode();
 					if(c==0){
-						main_menu_display_mode=10;clock_stop_stop_watch();clock_start_stop_watch();
+						main_menu_display_mode=18;clock_stop_stop_watch();clock_start_stop_watch();
 					}else if(c==2){
 						main_menu_display_mode=0;clock_stop_stop_watch();clock_start_stop_watch();
 						return 2;
 					}
 					break;
 		case 70:	if(setup_dimm()==0){
-						main_menu_display_mode=5;clock_stop_stop_watch();clock_start_stop_watch();
+						main_menu_display_mode=6;clock_stop_stop_watch();clock_start_stop_watch();
 					}
 					break;
 		case 80:	if(setup_alm_time()==0){
@@ -1480,11 +1480,11 @@ unsigned int ui_menues_main_menu_input(void){
 					}
 					break;
 		case 100:	if(clock_get_stop_watch()*4>10000){//10seconds waiting
-						main_menu_display_mode=6;clock_stop_stop_watch();clock_start_stop_watch();
+						main_menu_display_mode=15;clock_stop_stop_watch();clock_start_stop_watch();
 						settings_save(SETTINGS_CONT_MODE, cont_mode);
 					}
 					switch(ui_input_get_key()){
-						case UI_INPUT_KEY_BACK: 	main_menu_display_mode=6;
+						case UI_INPUT_KEY_BACK: 	main_menu_display_mode=15;
 										break;
 						case UI_INPUT_KEY_DOWN:
 						case UI_INPUT_KEY_UP: if(cont_mode==UI_MENUES_CONT_MODE_ON){
@@ -1494,7 +1494,7 @@ unsigned int ui_menues_main_menu_input(void){
 										}
 										clock_stop_stop_watch();clock_start_stop_watch();
 										break;
-						case UI_INPUT_KEY_OK: 	main_menu_display_mode=6;
+						case UI_INPUT_KEY_OK: 	main_menu_display_mode=15;
 										settings_save(SETTINGS_CONT_MODE, cont_mode);
 										clock_stop_stop_watch();clock_start_stop_watch();
 										break;
@@ -1511,7 +1511,7 @@ unsigned int ui_menues_main_menu_input(void){
 					case 0:	if(I2C_MP3_detected){
 								I2C_MP3_stopPlaying();
 							}
-							main_menu_display_mode=7;
+							main_menu_display_mode=16;
 							break;
 					case 2:if(I2C_MP3_detected){
 								I2C_MP3_playAmb(amb_track|0x80);
@@ -1533,7 +1533,7 @@ unsigned int ui_menues_main_menu_input(void){
 					case 0:	if(I2C_MP3_detected){
 								I2C_MP3_stopPlaying();
 							}
-							main_menu_display_mode=8;
+							main_menu_display_mode=17;
 							break;
 					case 2:if(I2C_MP3_detected){
 								I2C_MP3_playAmb(slp_track);
