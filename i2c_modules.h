@@ -25,7 +25,7 @@ extern unsigned char I2C_RADIO_detected;
 extern unsigned char I2C_MP3_detected;
 extern unsigned char I2C_MOTION_detected;
 extern unsigned char I2C_LIGHT_detected;
-volatile unsigned char I2C_busy;
+//volatile unsigned char I2C_busy;
 
 
 /* global functions */
@@ -38,7 +38,7 @@ extern char I2C_RTC_getTime(void);
 extern char I2C_RTC_setTime(void);
 
 /* Temperature functions */
-extern char I2C_getTemp(unsigned int *temp);
+extern char I2C_getTemp(signed int *temp);
 
 
 /* MP3 functions */
@@ -49,6 +49,6 @@ extern char I2C_MP3_playAlarm(unsigned char s);
 extern char I2C_MP3_playSched(unsigned char s);
 extern char I2C_MP3_playEvent(unsigned char s);
 extern char I2C_MP3_playAmb(unsigned char s);
-
+extern char I2C_MP3_setVol(unsigned char vol);
 
 #endif

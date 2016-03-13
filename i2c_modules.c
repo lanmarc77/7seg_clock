@@ -103,8 +103,12 @@ char I2C_MP3_playAmb(unsigned char s){
 	return MP3_playAmb(s);
 }
 
+char I2C_MP3_setVol(unsigned char vol){
+	return MP3_setVol(vol);
+}
+
 /* returns true if temperature was read, false otherwise */
-char I2C_getTemp(unsigned int *temp){
+char I2C_getTemp(signed int *temp){
 	if(I2C_TEMP_detected==1){
 		return SE95_getTemp(temp);
 	}

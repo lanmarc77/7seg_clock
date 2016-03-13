@@ -57,41 +57,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	 fixed DCF decoding error which could lead to a one minute delay
      changed every menu and input to only need a 4 button input (up, down, ok, back/cancel)
 	 better control of setting brightness
-
-TODO:
-- Prüfungszeitmodus für STA Abschlußpräsentationen
-- DCF Emfang/Sync per Fernbedienung deaktivieren, im EEPROM speichern
-- Blockzeiten per Fernbedienung einstellen, im EEPROM speichern
-- Präsentationstimer in sekunden einstellbar
-- alarm clock with I am awake function and No ring on saturday/sunday mode
+012: more modularization of all components for future extendability and exchangebility, code cleanup
+	 added clock odometer animation
+	 added automatic day light saving time adjustments for EU and US area in case of no dcf signal reception
+	 added setup for time display dot/colon behaviour
+	 added volume setup for ambient and sleep mp3 tracks
+	 changed initial setup screen for inverted dcf, inverted 7segment and fixed mode
+	 added support for I2C button/ir module
 */
 
-/*
-EEPROM usage (addresses in decimal notation):
-10: which mode is displayed
-11: dimmed brightness value
-12: bright brightness value
-13: alarm mode
-14: alarm hour
-15: alarm minute
-16: segment mode (CA/CC)
-17: fixed mode
-18: inverted dcf77 signal
-19: chosen MP3 track number for alarm
-20: continous mode on or off
-
-100:schedule setup 1
-105:schedule setup 2
-110:schedule setup 3
-....
-325:schedule setup 50
-330: unused
-
-*/
-
-#define VERSION_1 0
-#define VERSION_2 1
-#define VERSION_3 1
-
+#define VERSION "v012"
 
 #endif

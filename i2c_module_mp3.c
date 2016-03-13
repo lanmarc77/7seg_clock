@@ -40,6 +40,7 @@ volatile unsigned char MP3_state=0;
 #define MP3_error 230
 volatile unsigned char MP3_cmd;
 volatile unsigned char MP3_track=0;
+volatile unsigned char MP3_volume=0;
 
     //00: NOP
     //01: get state (initial states, is playing)
@@ -88,11 +89,15 @@ unsigned char MP3_talkTime(void){
 		MP3_cmd=MP3_talk_time;
 	}
 	if(MP3_cmd==MP3_talk_time+MP3_done){
-		MP3_cmd=0;
+		MP3_cmd=MP3_talk_time;
 		return 1;
 	}
 	if(MP3_cmd>MP3_error){
 		MP3_cmd=0;
+		return 1;
+	}
+	if(MP3_cmd>MP3_done){
+		MP3_cmd=MP3_talk_time;
 		return 1;
 	}
 	return 0;
@@ -103,11 +108,15 @@ unsigned char MP3_stopPlaying(void){
 		MP3_cmd=MP3_stop;
 	}
 	if(MP3_cmd==MP3_stop+MP3_done){
-		MP3_cmd=0;
+		MP3_cmd=MP3_stop;
 		return 1;
 	}
 	if(MP3_cmd>MP3_error){
 		MP3_cmd=0;
+		return 1;
+	}
+	if(MP3_cmd>MP3_done){
+		MP3_cmd=MP3_stop;
 		return 1;
 	}
 	return 0;
@@ -120,11 +129,17 @@ unsigned char MP3_playAlarm(unsigned char s){
 		
 	}
 	if(MP3_cmd==MP3_play_alarm+MP3_done){
-		MP3_cmd=0;
+		MP3_track=s;
+		MP3_cmd=MP3_play_alarm;
 		return 1;
 	}
 	if(MP3_cmd>MP3_error){
 		MP3_cmd=0;
+		return 1;
+	}
+	if(MP3_cmd>MP3_done){
+		MP3_track=s;
+		MP3_cmd=MP3_play_alarm;
 		return 1;
 	}
 	return 0;
@@ -138,11 +153,17 @@ unsigned char MP3_playSched(unsigned char s){
 		
 	}
 	if(MP3_cmd==MP3_play_sched+MP3_done){
-		MP3_cmd=0;
+		MP3_track=s;
+		MP3_cmd=MP3_play_sched;
 		return 1;
 	}
 	if(MP3_cmd>MP3_error){
 		MP3_cmd=0;
+		return 1;
+	}
+	if(MP3_cmd>MP3_done){
+		MP3_track=s;
+		MP3_cmd=MP3_play_sched;
 		return 1;
 	}
 	return 0;
@@ -155,11 +176,17 @@ unsigned char MP3_playEvent(unsigned char s){
 		
 	}
 	if(MP3_cmd==MP3_play_event+MP3_done){
-		MP3_cmd=0;
+		MP3_track=s;
+		MP3_cmd=MP3_play_event;
 		return 1;
 	}
 	if(MP3_cmd>MP3_error){
 		MP3_cmd=0;
+		return 1;
+	}
+	if(MP3_cmd>MP3_done){
+		MP3_track=s;
+		MP3_cmd=MP3_play_event;
 		return 1;
 	}
 	return 0;
@@ -172,11 +199,17 @@ unsigned char MP3_playAmb(unsigned char s){
 		
 	}
 	if(MP3_cmd==MP3_play_amb+MP3_done){
-		MP3_cmd=0;
+		MP3_track=s;
+		MP3_cmd=MP3_play_amb;
 		return 1;
 	}
 	if(MP3_cmd>MP3_error){
 		MP3_cmd=0;
+		return 1;
+	}
+	if(MP3_cmd>MP3_done){
+		MP3_track=s;
+		MP3_cmd=MP3_play_amb;
 		return 1;
 	}
 	return 0;
@@ -188,18 +221,47 @@ unsigned char MP3_playCont(void){
 		MP3_cmd=MP3_play_cont;
 	}
 	if(MP3_cmd==MP3_play_cont+MP3_done){
-		MP3_cmd=0;
+		MP3_cmd=MP3_play_cont;
 		return 1;
 	}
 	if(MP3_cmd>MP3_error){
 		MP3_cmd=0;
 		return 1;
 	}
+	if(MP3_cmd>MP3_done){
+		MP3_cmd=MP3_play_cont;
+		return 1;
+	}
 	return 0;
 }
 
-char MP3_check_i2c_state_machine(void){
 
+unsigned char MP3_setVol(unsigned char vol){
+	if(MP3_cmd==0){
+		MP3_cmd=MP3_set_volume;
+		MP3_volume=vol;
+	}
+	if(MP3_cmd==MP3_set_volume+MP3_done){
+		MP3_cmd=MP3_set_volume;
+		MP3_volume=vol;
+		return 1;
+	}
+	if(MP3_cmd>MP3_error){
+		MP3_cmd=0;
+		return 1;
+	}
+	if(MP3_cmd>MP3_done){
+		MP3_cmd=MP3_set_volume;
+		MP3_volume=vol;
+		return 1;
+	}
+	return 0;
+}
+
+
+char MP3_check_i2c_state_machine(void){
+	unsigned char min,hour,second,day,month,year,dow;
+	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
 	switch(MP3_state){
 		case 0:	if(MP3_cmd==MP3_stop){
 					MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
@@ -210,22 +272,22 @@ char MP3_check_i2c_state_machine(void){
 				}
 				if(MP3_cmd==MP3_play_alarm){
 					MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
-					MP3_messageBuf[1]=0x02;
-					MP3_messageBuf[2]=MP3_track;
+					MP3_messageBuf[1]=0x06;
+					MP3_messageBuf[2]=0;
 					TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 					MP3_state=20;
 				}
 				if(MP3_cmd==MP3_play_cont){
 					MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 					MP3_messageBuf[1]=0x0A;//write the current hour+dow
-					MP3_messageBuf[2]=I_hour|((I_dow-1)<<5);
+					MP3_messageBuf[2]=hour|((dow-1)<<5);
 					TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 					MP3_state=30;
 				}
 				if(MP3_cmd==MP3_talk_time){
 					MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 					MP3_messageBuf[1]=0x08;//write the current hour
-					MP3_messageBuf[2]=I_hour;
+					MP3_messageBuf[2]=hour;
 					TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 					MP3_state=40;
 				}
@@ -234,21 +296,28 @@ char MP3_check_i2c_state_machine(void){
 					MP3_messageBuf[1]=0x04;
 					MP3_messageBuf[2]=MP3_track;
 					TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
-					MP3_state=20;
+					MP3_state=10;
 				}
 				if(MP3_cmd==MP3_play_sched){
 					MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 					MP3_messageBuf[1]=0x03;
 					MP3_messageBuf[2]=MP3_track;
 					TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
-					MP3_state=20;
+					MP3_state=10;
 				}
 				if(MP3_cmd==MP3_play_amb){
 					MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 					MP3_messageBuf[1]=0x05;
 					MP3_messageBuf[2]=MP3_track;
 					TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
-					MP3_state=20;
+					MP3_state=10;
+				}
+				if(MP3_cmd==MP3_set_volume){
+					MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
+					MP3_messageBuf[1]=0x06;
+					MP3_messageBuf[2]=MP3_volume;
+					TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
+					MP3_state=10;
 				}
 				break;
 		case 10:if(!(TWI_Transceiver_Busy() )){
@@ -260,16 +329,22 @@ char MP3_check_i2c_state_machine(void){
 				break;	
 		case 20:if(!(TWI_Transceiver_Busy() )){
 					if ( TWI_statusReg.lastTransOK ){
+						MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
+						MP3_messageBuf[1]=0x02;
+						MP3_messageBuf[2]=MP3_track;
+						TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
+						MP3_state=10;
+					}else{
+						MP3_cmd=0;
+						MP3_state=0;
 					}
-					MP3_cmd=0;
-					MP3_state=0;
 				}
 				break;	
 		case 30:if(!(TWI_Transceiver_Busy() )){
 					if ( TWI_statusReg.lastTransOK ){
 						MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 						MP3_messageBuf[1]=0x0B;//write the current day
-						MP3_messageBuf[2]=I_day;
+						MP3_messageBuf[2]=day;
 						TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 						MP3_state=31;
 					}else{
@@ -283,7 +358,7 @@ char MP3_check_i2c_state_machine(void){
 					if ( TWI_statusReg.lastTransOK ){
 						MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 						MP3_messageBuf[1]=0x0C;//write the current month
-						MP3_messageBuf[2]=I_month;
+						MP3_messageBuf[2]=month;
 						TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 						MP3_state=32;
 					}else{
@@ -297,7 +372,7 @@ char MP3_check_i2c_state_machine(void){
 					if ( TWI_statusReg.lastTransOK ){
 						MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 						MP3_messageBuf[1]=0x0D;//write the current minute
-						MP3_messageBuf[2]=I_minute;
+						MP3_messageBuf[2]=min;
 						TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 						MP3_state=33;
 					}else{
@@ -318,7 +393,7 @@ char MP3_check_i2c_state_machine(void){
 					if ( TWI_statusReg.lastTransOK ){
 						MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 						MP3_messageBuf[1]=0x09;//write the current minute
-						MP3_messageBuf[2]=I_minute;
+						MP3_messageBuf[2]=min;
 						TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 						//MP3_cmd+=MP3_done;
 						MP3_cmd=0;

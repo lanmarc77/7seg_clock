@@ -18,10 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef USART_H
 #define USART_H
 
-char usart_send_char(unsigned char c);
-
-
-void usart_receive(char c);
-void usart_send_next(void);
+extern char usart_send_char(unsigned char c);
+extern void usart_send_next_ISR(void);
+extern void usart_init(void);
 
 #endif

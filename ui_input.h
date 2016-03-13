@@ -15,10 +15,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ADC_H
-#define ADC_H
+#ifndef UI_INPUT_H
+#define UI_INPUT_H
 
-extern void adc_ISR(void);
-extern void adc_init(void);
+extern unsigned char ui_input_number(unsigned char *number,unsigned char min,unsigned char max,unsigned int timeout);
+
+#define UI_INPUT_KEY_NONE 0
+#define UI_INPUT_KEY_OK 1
+#define UI_INPUT_KEY_BACK 2
+#define UI_INPUT_KEY_UP 3
+#define UI_INPUT_KEY_DOWN 4
+extern unsigned char ui_input_get_key(void);
+extern void ui_input_simulate(unsigned char k);
+
+extern void ui_input_init(void);
+
+extern unsigned char ui_input_get_digits(unsigned char keys, unsigned char pw_mode, unsigned int timeout,char *t,unsigned int *res);
+extern unsigned int ui_input_code(void);
+
 
 #endif

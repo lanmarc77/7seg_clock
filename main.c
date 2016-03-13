@@ -21,31 +21,70 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <avr/signal.h>
 #include <avr/wdt.h>
 #include <avr/sleep.h>
-#include <avr/eeprom.h>
 #include <avr/delay.h>
+#include "settings.h"
 #include "TWI_Master.h"
 #include "irmp.h"
 
 
 #include "ui_display_modes.h"
-#include "ui_setup_menus.h"
-#include "ui_ir.h"
+#include "ui_menus.h"
+#include "ui_input.h"
+#include "dcf77.h"
 #include "clock.h"
-#include "7seg_func.h"
+#include "display.h"
+#include "beeper.h"
 #include "adc.h"
 #include "usart.h"
 #include "i2c_modules.h"
 
 
 
+unsigned char dcf77_isr_part_counter=0;
+unsigned char irmp_isr_part_counter=0;
+unsigned char clock_isr_part_counter=0;
+unsigned char segments_isr_part_counter=0;
 
-ISR(TIMER1_COMPA_vect){//every 1/15000s = 66,66667탎;main worker ISR
-	unsigned char dsd=segments_ISR();
-	wdt_reset();
-	irmp_ISR();
-	dcf77_isr_part(dsd);
+
+
+
+//extra long running timer to allow timer0 to work a bit longer without interfering
+//with the precision of the internal clock
+ISR(TIMER2_COMP_vect){//every 50탎;main worker ISR
+	clock_isr_part_counter++;
+	if(clock_isr_part_counter==4){//every 4ms
+		clock_isr_part();
+		clock_isr_part_counter=0;
+	}
+
 }
 
+ISR(TIMER0_COMP_vect){//every 50탎;main worker ISR
+	unsigned char dsd=0;
+	irmp_isr_part_counter++;
+	if(irmp_isr_part_counter==2){//10khz
+		irmp_isr_part_counter=0;
+		wdt_reset();
+		irmp_ISR();
+		dsd=display_ISR();
+		beeper_ISR();
+		dcf77_isr_part_counter++;
+		if(dcf77_isr_part_counter==10){
+			if(dsd){
+				dcf77_isr_part_counter=0;
+				dcf77_isr_part();//every 1ms
+			}else{
+				dcf77_isr_part_counter--;
+			}
+		}
+	}
+
+}
+
+ISR(ADC_vect){
+	adc_ISR();
+
+}
 
 //ISR for received USART characters
 ISR(USART_RXC_vect){
@@ -53,13 +92,11 @@ ISR(USART_RXC_vect){
 	if(c=='U'){//update needed?
        	wdt_enable(WDTO_15MS); //enable watchdog
        	while(1);//force a watchdog reset
-    }else{
-		usart_receive(c);
 	}
 }
 
 ISR(USART_TXC_vect){
-	usart_send_next();
+	usart_send_next_ISR();
 }
 
 
@@ -68,85 +105,69 @@ int main (void)
 		unsigned char display_mode=0;
 		unsigned char old_second=60;
 		unsigned char i=0;
-
+		char c[8];
+		unsigned char TWI_buf[10];
+		unsigned char min,hour,second,day,month,year,dow;
 		
 		wdt_enable(WDTO_15MS);
 
 		GICR&=0x1F; //disable all external interrupts
 		
 		//load saved values from EEPROM
-		show_mode = eeprom_read_byte((uint8_t*)10);
-		if(show_mode>7){show_mode=2;}
-
-		dimm_value = eeprom_read_byte((uint8_t*)11);
-		if(dimm_value>250){dimm_value=40;}
-		
-		bright_value = eeprom_read_byte((uint8_t*)12);
-		if(bright_value>250){bright_value=0;}
-
-		alarm_mode=eeprom_read_byte((uint8_t*)13);
-		if(alarm_mode>ALARM_ON_RADIO){alarm_mode=ALARM_OFF;}
-		alarm_hour=eeprom_read_byte((uint8_t*)14);
-		if(alarm_hour>23){alarm_hour=0;}
-		alarm_minute=eeprom_read_byte((uint8_t*)15);
-		if(alarm_minute>59){alarm_minute=0;}
-		alarm_track=eeprom_read_byte((uint8_t*)19);
-		if(alarm_track>99){alarm_track=0;}
-
-		segment_mode = eeprom_read_byte((uint8_t*)16);
-		if(segment_mode>1){segment_mode=1;}
-
-		fixed_mode = eeprom_read_byte((uint8_t*)17);
-		if(fixed_mode>1){fixed_mode=0;}
-		
-		dcf77_inverted_flag = eeprom_read_byte((uint8_t*)18);
-		if((dcf77_inverted_flag!=0x00)&&(dcf77_inverted_flag!=0x80)){
-			dcf77_inverted_flag=0x00;
-		}
-		
-		cont_mode = eeprom_read_byte((uint8_t*)20);
-		if(cont_mode>CONT_MODE_OFF){cont_mode=CONT_MODE_ON;}
-		
-		load_schedules();
+		ui_display_modes_set_mode(settings_get(SETTINGS_DISPLAY_MODE));
+		display_set_dark_level(settings_get(SETTINGS_DARK_BRIGHTNESS));
+		display_set_bright_level(settings_get(SETTINGS_LIGHT_BRIGHTNESS));
+		ui_display_modes_set_fixed_mode(settings_get(SETTINGS_DISPLAY_FIXED_MODE));
+		dcf77_set_signal_type(settings_get(SETTINGS_DCF77_SIGNAL_TYPE));
+		ui_menues_set_cont_mode(settings_get(SETTINGS_CONT_MODE));
+		ui_menues_set_alarm_mode(settings_get(SETTINGS_ALARM_MODE));
+		ui_menues_set_alarm_hour(settings_get(SETTINGS_ALARM_HOUR));
+		ui_menues_set_alarm_minute(settings_get(SETTINGS_ALARM_MINUTE));
+		ui_menues_set_alarm_mp3_track(settings_get(SETTINGS_ALARM_MP3_TRACK));
+		ui_menues_load_schedules();
+		clock_set_dst_mode(settings_get(SETTINGS_DST_MODE));
+		display_set_anim_mode(settings_get(SETTINGS_ANIM_MODE));
+		ui_display_modes_set_dot_mode(settings_get(SETTINGS_UI_DISPLAY_DOT_MODE));
 		
 		sei();
 		set_sleep_mode(SLEEP_MODE_IDLE);
 
-		TWI_Master_Initialise();	//initialize the TWI/I2C interface
-		ir_init();
-		ADC_init();
-		segments_init();
-		for(i=0;i<50;i++){//wait for slower I2C devices to initialize themselves
+		TWI_MasterSlave_Initialise();	//initialize the TWI/I2C interface
+		ui_input_init();
+		adc_init();
+		display_init();
+		beeper_init();
+		dcf77_init();
+		for(i=0;i<50;i++){//wait for slower I2C devices to power up themselves
 			_delay_ms(5);wdt_reset();
 		}
 		I2C_init_modules();
-		dcf77_init();
+		for(i=0;i<50;i++){//wait for slower I2C devices to initialize themselves
+			_delay_ms(5);wdt_reset();
+		}
+		clock_init();
 		
-		//timer 1 is dcf signal search, display numbers and IR reception
-		OCR1A=1067;
-		TIMSK|=0x10;
-		TCCR1A=0x00;
-		TCCR1B=0x08|0x01;
+		OCR0=100-1; // 100 counts until compare match = every 50탎 compare match = 20khz call freqeuency
+		TCCR0=0x08|0x02;//CTC mode, prescaler 8 = 2Mhz
+		TIMSK|=0x02;
 
-		//UBRRL=51;//38400@16MHz
-		UBRRL=16;//115200@16MHz
-		UBRRH=0;
-		UCSRA=0x02;
-		UCSRB=0x90|0x48;
-		UCSRC=0x86;
+		OCR2=125-1; // 125 counts until compare match = every 1ms compare match = 1khz call freqeuency
+		TCCR2=0x08|0x05;//CTC mode, prescaler 128 = 125Khz
+		TIMSK|=0x80;
+
+
+		usart_init();
+		
+		
+		//ui_display_modes_set_fixed_mode(7);
+		//I2C_MP3_detected=0;
 
 
 		while(1){
-			cli();
-			refresh_display_content();
-			sei();
 			sleep_mode();
-			cli();
-			get_time();
-			sei();
 			I2C_check_state_machines();
 			switch(display_mode){
-				case 0:if(version_default()==0){
+				case 0:if(ui_display_modes_version()==0){
 							if(I2C_RTC_detected) {
 								display_mode=2;//2=default
 							}else{
@@ -154,46 +175,57 @@ int main (void)
 							}
 						}
 						break;
-				case 1:
-						if(((DCF77_PIN^dcf77_inverted_flag))==0){
-							I_digits[0]=10;//default 10
+				case 1:	c[0]=' ';c[1]=' ';c[2]=' ';c[3]=' ';c[4]=' ';c[5]=' ';c[6]=' ';c[7]=' ';
+						if(dcf77_get_signal()==0){
+							c[3]=' ';//default 10
 						}else{
-							I_digits[0]=10|0x80;//default 10
+							c[3]='.';//default 10
 						}
-						I_digits[1]=10;//default 10
-						I_digits[2]=10;//default 10
-						I_digits[3]=dcf_state%10;
-						if(filtered_dcf77!=0){
-							I_digits[1]|=0x80;
-						}else{
-							I_digits[1]&=~0x80;
-						}
-						if(dcf_state==3){
+						
+						c[6]=dcf77_get_state()%10+48;
+						if(dcf77_get_state()==DCF77_STATE_FOUND_SYNC_FULL){
 							display_mode=2;
 						}
-						I_SEG_MODE=SEG_DIM;
-						//I_SEG_MODE=SEG_BRIGHT;
+						
+						display_set_mode(DISPLAY_7SEG_DIM);
+						display_set_time(&c[0]);
 						break;
-				case 2:	if(check_alarm()){
+				case 2:	if(ui_menues_check_alarm()){
 						}else{
-							switch(show_mode){
-								case 0:	c1_default();break;
-								case 1:TA_default();break;
-								case 2:simple_default();break;
-								case 3:WBS_default();break;
-								case 4:TE_default();break;
-								case 5:bin_default();break;
-								case 6:C2_default();break;
-								case 7:C3_default();break;
+							switch(ui_display_modes_get_mode()){
+								case 0:	ui_display_modes_C1();break;
+								case 1:ui_display_modes_TA();break;
+								case 2:ui_display_modes_simple();break;
+								case 3:ui_display_modes_WBS();break;
+								case 4:ui_display_modes_TE();break;
+								case 5:ui_display_modes_bin();break;
+								case 6:ui_display_modes_C2();break;
+								case 7:ui_display_modes_C3();break;
+								default: ui_display_modes_simple();break;
 							}
 						}
-						if(I_second!=old_second){
-							if(I_second==0){
-								if((I2C_MP3_detected)&&(cont_mode==CONT_MODE_ON)){
+						if(TWI_Get_Data_From_Receiver(&TWI_buf[0])){
+							if(TWI_buf[0]==0x01){//key code via I2C
+								if(TWI_buf[1]&0x01){
+									ui_input_simulate(UI_INPUT_KEY_BACK);
+								}else if(TWI_buf[1]&0x02){
+									ui_input_simulate(UI_INPUT_KEY_OK);
+								}else if(TWI_buf[1]&0x04){
+									ui_input_simulate(UI_INPUT_KEY_UP);
+								}else if(TWI_buf[1]&0x08){
+									ui_input_simulate(UI_INPUT_KEY_DOWN);
+								}
+								TWI_buf[0]=0;TWI_buf[1]=0;TWI_buf[2]=0;
+							}
+						}
+						clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+						if(second!=old_second){
+							if(second==0){
+								if((I2C_MP3_detected)&&(ui_menues_get_cont_mode()==UI_MENUES_CONT_MODE_ON)){
 									I2C_MP3_playCont();
 								}							
 							}
-							old_second=I_second;
+							old_second=second;
 						}
 						break;
 			}

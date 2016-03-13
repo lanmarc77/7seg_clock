@@ -18,20 +18,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef UI_DISPLAY_MODES_H
 #define UI_DISPLAY_MODES_H
 
+extern unsigned char ui_display_modes_get_mode(void);
+extern void ui_display_modes_set_mode(unsigned char c);
+extern void ui_display_modes_set_fixed_mode(unsigned char c);
+extern unsigned char ui_display_modes_get_fixed_mode(void);
+#define UI_DISPLAY_MODES_DOT_MODE_OFF 0
+#define UI_DISPLAY_MODES_DOT_MODE_DOT 1
+#define UI_DISPLAY_MODES_DOT_MODE_DOT_DCF 2
+#define UI_DISPLAY_MODES_DOT_MODE_COLON 3
+#define UI_DISPLAY_MODES_DOT_MODE_COLON_DCF 4
+extern void ui_display_modes_set_dot_mode(unsigned char c);
+extern unsigned char ui_display_modes_get_dot_mode(void);
 
-extern volatile unsigned char show_mode;
-extern volatile unsigned char display_update;
-extern unsigned char fixed_mode;
 
-extern void TA_default(void);
-extern void WBS_default(void);
-extern void bin_default(void);
-extern void TE_default(void);
-extern void c1_default(void);
-extern void C2_default(void);
-extern void C3_default(void);
-extern void simple_default(void);
-extern unsigned char version_default(void);
+extern void ui_display_modes_TA(void);
+extern void ui_display_modes_WBS(void);
+extern void ui_display_modes_bin(void);
+extern void ui_display_modes_TE(void);
+extern void ui_display_modes_C1(void);
+extern void ui_display_modes_C2(void);
+extern void ui_display_modes_C3(void);
+extern void ui_display_modes_simple(void);
+extern unsigned char ui_display_modes_version(void);
 
 
 #endif

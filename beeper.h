@@ -15,10 +15,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ADC_H
-#define ADC_H
+#ifndef BEEPER_H
+#define BEEPER_H
 
-extern void adc_ISR(void);
-extern void adc_init(void);
+extern void beeper_init(void);
+extern void beeper_ISR(void);
+extern void beeper_set_mode(unsigned char mode);
+
+#define BEEPER_ON 0
+#define BEEPER_OFF 1
+#define BEEPER_ON_FULL 2
 
 #endif

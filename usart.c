@@ -25,22 +25,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 unsigned char sendBufferPtr=0;
 unsigned char sentBufferPtr=0;
-unsigned char sendBuffer[200]={0};
+unsigned char sendBuffer[50]={0};
 
 char usart_send_char(unsigned char c){
 	if(sendBufferPtr<sizeof(sendBuffer)){
 		sendBuffer[sendBufferPtr]=c;
+		cli();
 		sendBufferPtr++;
-		if(UCSRA&0x20){
-			usart_send_next();
+		//if(UCSRA&0x20){
+		if(sendBufferPtr==1){
+			usart_send_next_ISR();
 		}
+		sei();
 		return 1;
 	}else{
 		return 0;
 	}
 }
 
-void usart_send_next(void){
+void usart_send_next_ISR(void){
 	if(sendBufferPtr!=sentBufferPtr){
 		UDR=sendBuffer[sentBufferPtr];
 		sentBufferPtr++;
@@ -51,8 +54,13 @@ void usart_send_next(void){
 }
 
 
-void usart_receive(char c){
-
+void usart_init(void){
+	//UBRRL=51;//38400@16MHz
+	UBRRL=16;//115200@16MHz
+	UBRRH=0;
+	UCSRA=0x02;
+	UCSRB=0x90|0x48;
+	UCSRC=0x86;
 }
 
 #endif

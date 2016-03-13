@@ -50,7 +50,7 @@ unsigned char SE95_detect(void){
 	}
 }
 
-unsigned char SE95_getTemp(unsigned int *temp){
+unsigned char SE95_getTemp(signed int *temp){
 	if(SE95_cmd==0){
 		SE95_cmd=SE95_get_temp;
 	}

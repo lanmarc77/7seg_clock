@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 unsigned int ad_value=0;
 
-ISR(ADC_vect){
+void adc_ISR(void){
 	switch(ADMUX&0x07){
 		case 0: ADMUX=(ADMUX&0xF7)|0x01;ad_value=ADCL|(ADCL<<8);break;
 		case 1: ADMUX=(ADMUX&0xF7)|0x02;break;
@@ -39,7 +39,7 @@ ISR(ADC_vect){
 }
 
 
-void ADC_init(void){
+void adc_init(void){
 
 	ADMUX=0x40;	//reference on vccf, channel 0 start
 	ADCSRA=0x9F;	//interrupts on, highest prescaler, no started yet

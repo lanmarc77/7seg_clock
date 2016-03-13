@@ -43,7 +43,7 @@ TARGET =  clock_firmware
 
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = irmp.c TWI_Master.c clock.c 7seg_func.c ui_ir.c adc.c ui_display_modes.c ui_setup_menus.c usart.c i2c_modules.c main.c
+SRC = settings.c beeper.c irmp.c TWI_Master.c dcf77.c clock.c display_7seg.c ui_input.c adc.c ui_display_modes.c ui_menus.c usart.c i2c_modules.c main.c
 
 
 # List Assembler source files here.
@@ -189,7 +189,7 @@ AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 # to submit bug reports.
 #AVRDUDE_VERBOSE = -v -v
 
-AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER) -b 57600
+AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER) -b 115200
 AVRDUDE_FLAGS += $(AVRDUDE_NO_VERIFY)
 AVRDUDE_FLAGS += $(AVRDUDE_VERBOSE)
 AVRDUDE_FLAGS += $(AVRDUDE_ERASE_COUNTER)
@@ -342,6 +342,7 @@ extcoff: $(TARGET).elf
 	@echo
 	@echo $(MSG_FLASH) $@
 	$(OBJCOPY) -O $(FORMAT) -R .eeprom $< $@
+	cat $(TARGET).hex optiboot_atmega32_16Mhz_115200.hex | gawk -f combine.awk > $(TARGET)_bldr.hex
 
 %.eep: %.elf
 	@echo

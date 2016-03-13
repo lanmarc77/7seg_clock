@@ -19,149 +19,214 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define UI_DISPLAY_MODES_C
 #include "config.h"
 #include "ui_display_modes.h"
-#include "ui_setup_menus.h"
-#include "ui_ir.h"
+#include "ui_menus.h"
+#include "ui_input.h"
+#include "dcf77.h"
 #include "clock.h"
-#include "7seg_func.h"
+#include "display.h"
+#include "settings.h"
 #include "i2c_modules.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/eeprom.h>
 
 
-volatile unsigned char show_mode=0;
-unsigned char old_second=0;
-volatile unsigned char display_update=0;
+
+unsigned char dot_mode=UI_DISPLAY_MODES_DOT_MODE_DOT;
+void ui_display_modes_set_dot_mode(unsigned char c){
+	if(c>UI_DISPLAY_MODES_DOT_MODE_COLON_DCF){
+		c=UI_DISPLAY_MODES_DOT_MODE_DOT;
+	}
+	dot_mode=c;
+}
+
+unsigned char ui_display_modes_get_dot_mode(void){
+	return dot_mode;
+}
+
+
+unsigned char display_mode=0;
+
+unsigned char ui_display_modes_get_mode(void){
+	return display_mode;
+}
+
+void ui_display_modes_set_mode(unsigned char c){
+	cli();
+	if(c>7){
+		c=2;
+	}
+	display_mode=c;
+	sei();
+}
+
+
 unsigned char fixed_mode=0;
+
+void ui_display_modes_set_fixed_mode(unsigned char c){
+	cli();
+	if(c>7){
+		c=2;
+	}
+	fixed_mode=c;
+	sei();
+}
+
+unsigned char ui_display_modes_get_fixed_mode(void){
+	return fixed_mode;
+}
+
  
-unsigned char show_dot_flag=1;
-void show_dcf77_signal_dot(void){
-	if(show_dot_flag){
-		if((!I2C_RTC_detected && (no_dcf_signal>=(unsigned int)3600))||(I2C_RTC_detected && (no_dcf_signal>=(unsigned int)3600*12))){
-			if(dcf_state==0){
-				I_digits[1]&=~0x80;
-			}else{
-				if((filtered_dcf77) == 0){//logic 0 input
-					I_digits[1]&=~0x80;
-				}else{
-					I_digits[1]|=0x80;
-				}
-			}
+//unsigned char show_dot_flag=1;
+//returns 0-off
+//returns 1-on
+char get_dcf77_signal_dot(void){
+	if((!I2C_RTC_detected && (clock_get_last_refresh(CLOCK_UPDATE_SOURCE_DCF77)>=24*60))||(I2C_RTC_detected && (clock_get_last_refresh(CLOCK_UPDATE_SOURCE_DCF77)>=24*7*60))){
+		if(dcf77_get_state()==DCF77_STATE_NONE){
+			return 0;
 		}else{
-			if(show_mode==6){
-				I_digits[1]&=~0x80;
+			if((dcf77_get_signal()) == 0){//logic 0 input
+				return 0;
 			}else{
-				I_digits[1]|=0x80;
+				return 1;
 			}
+		}
+	}else{
+		if(ui_display_modes_get_mode()==6){
+			return 0;
+		}else{
+			return 1;
 		}
 	}
 }
 
-
 void fill_date(void){
-	I_COLON_MODE=COLON_OFF;
-	I_digits[0]=I_day/10;
-	I_digits[1]=(I_day%10)|0x80;
-	I_digits[2]=I_month/10;
-	I_digits[3]=(I_month%10)|0x80;
-	show_dot_flag=0;
+	char c[8];c[1]=' ';c[3]=' ';c[5]=' ';c[7]=' ';
+	unsigned char min,hour,second,day,month,year,dow;
+	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+	c[0]=day/10+48;
+	c[2]=(day%10)+48;
+	c[3]='.';
+	c[4]=month/10+48;
+	c[6]=(month%10)+48;
+	c[7]='.';
+	display_set_time(&c[0]);
 }
 
-void fill_dow_year(unsigned char ger){
-	I_COLON_MODE=COLON_OFF;
-	if(ger){
-		switch(I_dow){
-				case 1:	I_digits[0]=L_M;
-						I_digits[1]=L_o;
+void fill_dow_year(unsigned char lang){
+	char c[4];
+	unsigned char min,hour,second,day,month,year,dow;
+	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+	if(lang==1){//1=german
+		switch(dow){
+				case 1:	c[0]='M';
+						c[1]='o';
 						break;
-				case 2:	I_digits[0]=L_d;
-						I_digits[1]=L_I;
+				case 2:	c[0]='D';
+						c[1]='i';
 						break;
-				case 3:	I_digits[0]=L_M;
-						I_digits[1]=L_I;
+				case 3:	c[0]='M';
+						c[1]='i';
 						break;
-				case 4:	I_digits[0]=L_d;
-						I_digits[1]=L_o;
+				case 4:	c[0]='D';
+						c[1]='o';
 						break;
-				case 5:	I_digits[0]=L_F;
-						I_digits[1]=L_r;
+				case 5:	c[0]='F';
+						c[1]='r';
 						break;
-				case 6:	I_digits[0]=L_S;
-						I_digits[1]=L_A;
+				case 6:	c[0]='S';
+						c[1]='a';
 						break;
-				case 7:	I_digits[0]=L_S;
-						I_digits[1]=L_o;
+				case 7:	c[0]='S';
+						c[1]='o';
 						break;
 			}
 	}else{
-		switch(I_dow){
-			case 1:	I_digits[0]=L_M;
-					I_digits[1]=L_o;
+		switch(dow){
+			case 1:	c[0]='M';
+					c[1]='o';
 					break;
-			case 2:	I_digits[0]=L_t;
-					I_digits[1]=L_U;
+			case 2:	c[0]='T';
+					c[1]='u';
 					break;
-			case 3:	I_digits[0]=L_W;
-					I_digits[1]=L_E;
+			case 3:	c[0]='W';
+					c[1]='e';
 					break;
-			case 4:	I_digits[0]=L_t;
-					I_digits[1]=L_H;
+			case 4:	c[0]='T';
+					c[1]='h';
 					break;
-			case 5:	I_digits[0]=L_F;
-					I_digits[1]=L_r;
+			case 5:	c[0]='F';
+					c[1]='r';
 					break;
-			case 6:	I_digits[0]=L_S;
-					I_digits[1]=L_A;
+			case 6:	c[0]='S';
+					c[1]='a';
 					break;
-			case 7:	I_digits[0]=L_S;
-					I_digits[1]=L_U;
+			case 7:	c[0]='S';
+					c[1]='u';
 					break;
 		}
 	}
-	I_digits[2]=I_year/10;
-	I_digits[3]=I_year%10;
-	show_dot_flag=0;
+	c[2]=year/10+48;
+	c[3]=year%10+48;
+	display_set_text(&c[0]);
 }
 
 void fill_time(void){
-	I_COLON_MODE=COLON_ON;
-	I_digits[0]=I_hour/10;
-	I_digits[1]=(I_hour%10);
-	I_digits[2]=I_minute/10;
-	I_digits[3]=I_minute%10;
-	show_dot_flag=1;
+	char c[8];c[1]=' ';c[3]=' ';c[5]=' ';c[7]=' ';
+	unsigned char min,hour,second,day,month,year,dow;
+	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+	c[0]=hour/10+48;
+	c[2]=(hour%10)+48;
+	c[4]=min/10+48;
+	c[6]=min%10+48;	
+	if(dot_mode==UI_DISPLAY_MODES_DOT_MODE_DOT){
+			c[3]='.';
+	}else if(dot_mode==UI_DISPLAY_MODES_DOT_MODE_COLON){
+			c[3]=':';
+	}else if (get_dcf77_signal_dot()){
+		if(dot_mode==UI_DISPLAY_MODES_DOT_MODE_DOT_DCF){
+			c[3]='.';
+		}else if(dot_mode==UI_DISPLAY_MODES_DOT_MODE_COLON_DCF){
+			c[3]=':';
+		}
+	}
+	display_anim_on();
+	display_set_time(&c[0]);
 }
 
 void fill_temp(void){
-	unsigned int temp=0;
+	signed int temp=0;
+	char c[8];c[1]=' ';c[3]=' ';c[5]=' ';c[7]=' ';
 	if(I2C_TEMP_detected){
 		if(I2C_getTemp(&temp)){
 			if(temp>=0){
-				I_digits[0]=temp/100;
-				I_digits[1]=((temp%100)/10)|0x80;
-				I_digits[2]=temp%10;
-				I_digits[3]=L_C;
-				if(I_digits[0]==0){
-					I_digits[0]=L_NOTHING;
+				c[0]=temp/100+48;
+				c[2]=((temp%100)/10)+48;
+				c[3]='.';
+				c[4]=temp%10+48;
+				c[6]='C';
+				if(temp<100){
+					c[0]=' ';
 				}
 			}else{
-				I_digits[0]=L_minus;
-				I_digits[1]=-temp/100;
-				I_digits[2]=((-temp%100)/10)|0x80;
-				I_digits[3]=-temp%10;
-				if(I_digits[1]==0){
-					I_digits[1]=I_digits[2];
-					I_digits[2]=I_digits[3];
-					I_digits[3]=L_C;
+				temp=-temp;
+				c[0]='-';
+				c[2]=((temp)/100)+48;
+				c[4]=(((temp)%100)/10)+48;
+				c[5]='.';
+				c[6]=((temp)%10)+48;
+				if(temp<100){
+					c[2]=c[4];
+					c[4]=c[6];
+					c[6]='C';
+					c[5]=' ';
+					c[3]='.';
 				}
 			}
-	
+			display_set_time(&c[0]);
 		}
 	}else{
-		I_digits[0]=L_minus;
-		I_digits[1]=L_minus;
-		I_digits[2]=L_minus;
-		I_digits[3]=L_minus;
+		c[0]='-';c[2]='-';c[4]='-';c[6]='-';
+		display_set_time(&c[0]);
 	}
 }
 
@@ -169,137 +234,142 @@ void fill_temp(void){
 
 unsigned char ta_display_mode=0;
 unsigned int ta_i=0;
-void TA_default(void){
+void ui_display_modes_TA(void){
+	unsigned char min,hour,second,day,month,year,dow;
+	char c[4];
 	unsigned int c_time=0;
-	stop_beep_mode=STOP_BEEP_SHORT;
+	unsigned char def=0;
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
 	switch(ta_display_mode){
-		case 0:	if((old_second!=I_second)||(display_update)){
-					I_COLON_MODE=COLON_OFF;
-					c_time=I_minute+I_hour*60;
-					if((I_dow==1)||(I_dow==2)||(I_dow==3)||(I_dow==4)){
-						fill_time();//default
-						I_SEG_MODE=SEG_BRIGHT; //default
-						if(	((I_minute==59)&&(I_hour==7))||
-							((I_minute==44)&&(I_hour==9))||
-							((I_minute==29)&&(I_hour==11))||
-							((I_minute==44)&&(I_hour==13))
-						   )
-						{
-							I_SEG_MODE=SEG_ZOOM;
-						}else{
-							I_SEG_MODE=SEG_BRIGHT;
-						}
+		case 0:	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+				c_time=min+hour*60;
+				if((dow==1)||(dow==2)||(dow==3)||(dow==4)){
+					if(	((min==59)&&(hour==7))||
+						((min==44)&&(hour==9))||
+						((min==29)&&(hour==11))||
+						((min==44)&&(hour==13))
+					   )
+					{
+						display_set_mode(DISPLAY_7SEG_ZOOM);
+						def|=2;
+					}
+					if(((second%10==0)||((second+1)%10==0))&&(1)){
 						if((c_time>=8*60+00)&&(c_time<9*60+30)){
-							I_digits[0]=13;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+30-c_time)/10;
-							I_digits[3]=(9*60+30-c_time)%10;
-							show_dot_flag=0;
+							c[0]='L';
+							c[1]='-';
+							c[2]=(9*60+30-c_time)/10+48;
+							c[3]=(9*60+30-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+30)&&(c_time<9*60+45)){
-							I_digits[0]=14;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+45-c_time)/10;
-							I_digits[3]=(9*60+45-c_time)%10;
-							show_dot_flag=0;
+							c[0]='b';
+							c[1]='-';
+							c[2]=(9*60+45-c_time)/10+48;
+							c[3]=(9*60+45-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+45)&&(c_time<11*60+15)){
-							I_digits[0]=13;
-							I_digits[1]=12;
-							I_digits[2]=(11*60+15-c_time)/10;
-							I_digits[3]=(11*60+15-c_time)%10;
-							show_dot_flag=0;
+							c[0]='L';
+							c[1]='-';
+							c[2]=(11*60+15-c_time)/10+48;
+							c[3]=(11*60+15-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=11*60+15)&&(c_time<11*60+30)){
-							I_digits[0]=14;
-							I_digits[1]=12;
-							I_digits[2]=(11*60+30-c_time)/10;
-							I_digits[3]=(11*60+30-c_time)%10;
-							show_dot_flag=0;
+							c[0]='b';
+							c[1]='-';
+							c[2]=(11*60+30-c_time)/10+48;
+							c[3]=(11*60+30-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=11*60+30)&&(c_time<13*60+00)){
-							I_digits[0]=13;
-							I_digits[1]=12;
-							I_digits[2]=(13*60+00-c_time)/10;
-							I_digits[3]=(13*60+00-c_time)%10;
-							show_dot_flag=0;
+							c[0]='L';
+							c[1]='-';
+							c[2]=(13*60+00-c_time)/10+48;
+							c[3]=(13*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=13*60+00)&&(c_time<13*60+45)){
-							I_digits[0]=14;
-							I_digits[1]=12;
-							I_digits[2]=(13*60+45-c_time)/10;
-							I_digits[3]=(13*60+45-c_time)%10;
-							show_dot_flag=0;
+							c[0]='b';
+							c[1]='-';
+							c[2]=(13*60+45-c_time)/10+48;
+							c[3]=(13*60+45-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=13*60+45)&&(c_time<15*60+15)){
-							I_digits[0]=13;
-							I_digits[1]=12;
-							I_digits[2]=(15*60+15-c_time)/10;
-							I_digits[3]=(15*60+15-c_time)%10;
-							show_dot_flag=0;
-						}
-					}else if(I_dow==5){
-						fill_time();
-						I_SEG_MODE=SEG_BRIGHT;
-						if(	((I_minute==29)&&(I_hour==7))||
-							((I_minute==14)&&(I_hour==9))||
-							((I_minute==59)&&(I_hour==10))
-						   )
-						{
-							I_SEG_MODE=SEG_ZOOM;
+							c[0]='L';
+							c[1]='-';
+							c[2]=(15*60+15-c_time)/10+48;
+							c[3]=(15*60+15-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else{
-							I_SEG_MODE=SEG_BRIGHT;
+							def|=1;
 						}
+					}else{
+						def|=1;
+					}
+				}else if(dow==5){
+					if(	((min==29)&&(hour==7))||
+						((min==14)&&(hour==9))||
+						((min==59)&&(hour==10))
+					   )
+					{
+						display_set_mode(DISPLAY_7SEG_ZOOM);
+						def|=2;
+					}
+					if(((second%10==0)||((second+1)%10==0))&&(1)){
 						if((c_time>=7*60+30)&&(c_time<9*60+00)){
-							I_digits[0]=13;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+00-c_time)/10;
-							I_digits[3]=(9*60+00-c_time)%10;
-							show_dot_flag=0;
+							c[0]='L';
+							c[1]='-';
+							c[2]=(9*60+00-c_time)/10+48;
+							c[3]=(9*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+00)&&(c_time<9*60+15)){
-							I_digits[0]=14;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+15-c_time)/10;
-							I_digits[3]=(9*60+15-c_time)%10;
-							show_dot_flag=0;
+							c[0]='b';
+							c[1]='-';
+							c[2]=(9*60+15-c_time)/10+48;
+							c[3]=(9*60+15-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+15)&&(c_time<10*60+45)){
-							I_digits[0]=13;
-							I_digits[1]=12;
-							I_digits[2]=(10*60+45-c_time)/10;
-							I_digits[3]=(10*60+45-c_time)%10;
-							show_dot_flag=0;
+							c[0]='L';
+							c[1]='-';
+							c[2]=(10*60+45-c_time)/10+48;
+							c[3]=(10*60+45-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=10*60+45)&&(c_time<11*60+00)){
-							I_digits[0]=14;
-							I_digits[1]=12;
-							I_digits[2]=(11*60+00-c_time)/10;
-							I_digits[3]=(11*60+00-c_time)%10;
-							show_dot_flag=0;
+							c[0]='b';
+							c[1]='-';
+							c[2]=(11*60+00-c_time)/10+48;
+							c[3]=(11*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=11*60+00)&&(c_time<12*60+30)){
-							I_digits[0]=13;
-							I_digits[1]=12;
-							I_digits[2]=(12*60+30-c_time)/10;
-							I_digits[3]=(12*60+30-c_time)%10;
-							show_dot_flag=0;
+							c[0]='L';
+							c[1]='-';
+							c[2]=(12*60+30-c_time)/10+48;
+							c[3]=(12*60+30-c_time)%10+48;
+							display_set_text(&c[0]);
+						}else{
+							def|=1;
 						}
-					}else{//weekends
-						fill_time();
-						I_SEG_MODE=SEG_BRIGHT;
+					}else{
+						def|=1;
 					}
-					display_update=0;
-					if(((I_second%10==0)||((I_second+1)%10==0))&&(1)){//use precalculated values
-
-					}else{//default display time all days in all modes
-						fill_time();
+				}else{//weekends
+					def|=1;
+				}
+				if(!(def&2)){
+					if((hour>=20)||(hour<7)){//energy save mode between 20:00-07:00
+						display_set_mode(DISPLAY_7SEG_DIM);
+					}else{
+						display_set_mode(DISPLAY_7SEG_BRIGHT);
 					}
-					old_second=I_second;
 				}
-				show_dcf77_signal_dot();
-				if((I_hour>=20)||(I_hour<7)){//energy save mode between 20:00-07:00
-					I_SEG_MODE=SEG_DIM;
+				if(def&1){
+					fill_time();
 				}
-				if(check_schedule()==0){
-					switch(get_ir_code()){
-						case IR_MUTE:	ta_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+				if(ui_menues_check_schedule()==0){
+					switch(ui_input_get_key()){
+						case UI_INPUT_KEY_OK:	ta_display_mode=1;
 										break;
-						case IR_CH_PLUS: 	ta_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_UP: 	ta_display_mode=50;
 											break;
-						case IR_CH_MINUS: ta_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_DOWN: ta_display_mode=60;
 											break;
-						case IR_POWER: 		if(I2C_MP3_detected){
+						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 												I2C_MP3_talkTime();
 											}
 											break;
@@ -307,50 +377,47 @@ void TA_default(void){
 				}
 				break;
 
-		case 1:	ta_i=code_input();
+		case 1:	ta_i=ui_input_code();
 				if(ta_i==0){//code insert canceld
-					ta_display_mode=0;display_update=1;
+					ta_display_mode=0;
 				}else if(ta_i==1){//code is still entered
 				}else if(ta_i==1306){//code correctly entered
 					ta_display_mode=2;
 				}
 				break;
 
-		case 2:	ta_i=main_menu_input();
+		case 2:	ta_i=ui_menues_main_menu_input();
 				if(ta_i==0){//menu canceled
-					ta_display_mode=0;display_update=1;
+					ta_display_mode=0;
 				}else if(ta_i==2){//new show mode
-					ta_display_mode=0;display_update=1;
+					ta_display_mode=0;
 				}
 				break;
 
-		case 50:	start_stop_watch();
+		case 50:	clock_start_stop_watch();
 					fill_temp();
 					ta_display_mode=51;
 					break;
 		case 51:	fill_temp();
-					if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						ta_display_mode=0;display_update=1;
+					if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						ta_display_mode=0;
 					}
 					break;
-		case 60:	start_stop_watch();
+		case 60:	clock_start_stop_watch();
 					fill_date();
 					ta_display_mode=61;
 					break;
-		case 61:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						start_stop_watch();
-						display_update=1;
+		case 61:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						clock_start_stop_watch();
 						ta_display_mode=62;
 						fill_dow_year(0);
 					}
 					break;
-		case 62:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						ta_display_mode=0;display_update=1;
+		case 62:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						ta_display_mode=0;
 					}
 					break;
 		default: 
@@ -363,137 +430,142 @@ void TA_default(void){
 
 unsigned char wbs_display_mode=0;
 unsigned int wbs_i=0;
-void WBS_default(void){
+void ui_display_modes_WBS(void){
+	char c[4];
+	unsigned char def=0;
 	unsigned int c_time=0;
-	stop_beep_mode=STOP_BEEP_SHORT;
+	unsigned char min,hour,second,day,month,year,dow;
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
 	switch(wbs_display_mode){
-		case 0:	if((old_second!=I_second)||(display_update)){
-					c_time=I_minute+I_hour*60;
-					I_COLON_MODE=COLON_OFF;
-					if((I_dow==1)||(I_dow==2)||(I_dow==3)||(I_dow==4)){
-						fill_time();
-						I_SEG_MODE=SEG_BRIGHT;
-						if(	((I_minute==59)&&(I_hour==7))||
-							((I_minute==44)&&(I_hour==9))||
-							((I_minute==29)&&(I_hour==11))||
-							((I_minute==29)&&(I_hour==13))
-						   )
-						{
-							I_SEG_MODE=SEG_ZOOM;
-						}else{
-							I_SEG_MODE=SEG_BRIGHT;
-						}
+		case 0:	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+				c_time=min+hour*60;
+				if((dow==1)||(dow==2)||(dow==3)||(dow==4)){
+					if(	((min==59)&&(hour==7))||
+						((min==44)&&(hour==9))||
+						((min==29)&&(hour==11))||
+						((min==29)&&(hour==13))
+					   )
+					{
+						display_set_mode(DISPLAY_7SEG_ZOOM);
+						def|=2;
+					}
+					if(((second%10==0)||((second+1)%10==0))&&(1)){
 						if((c_time>=8*60+00)&&(c_time<9*60+30)){
-							I_digits[0]=L_S;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+30-c_time)/10;
-							I_digits[3]=(9*60+30-c_time)%10;
-							show_dot_flag=0;
+							c[0]='S';
+							c[1]='-';
+							c[2]=(9*60+30-c_time)/10+48;
+							c[3]=(9*60+30-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+30)&&(c_time<9*60+45)){
-							I_digits[0]=L_P;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+45-c_time)/10;
-							I_digits[3]=(9*60+45-c_time)%10;
-							show_dot_flag=0;
+							c[0]='P';
+							c[1]='-';
+							c[2]=(9*60+45-c_time)/10+48;
+							c[3]=(9*60+45-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+45)&&(c_time<11*60+15)){
-							I_digits[0]=L_S;
-							I_digits[1]=12;
-							I_digits[2]=(11*60+15-c_time)/10;
-							I_digits[3]=(11*60+15-c_time)%10;
-							show_dot_flag=0;
+							c[0]='S';
+							c[1]='-';
+							c[2]=(11*60+15-c_time)/10+48;
+							c[3]=(11*60+15-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=11*60+15)&&(c_time<11*60+30)){
-							I_digits[0]=L_P;
-							I_digits[1]=12;
-							I_digits[2]=(11*60+30-c_time)/10;
-							I_digits[3]=(11*60+30-c_time)%10;
-							show_dot_flag=0;
+							c[0]='P';
+							c[1]='-';
+							c[2]=(11*60+30-c_time)/10+48;
+							c[3]=(11*60+30-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=11*60+30)&&(c_time<13*60+00)){
-							I_digits[0]=L_S;
-							I_digits[1]=12;
-							I_digits[2]=(13*60+00-c_time)/10;
-							I_digits[3]=(13*60+00-c_time)%10;
-							show_dot_flag=0;
+							c[0]='S';
+							c[1]='-';
+							c[2]=(13*60+00-c_time)/10+48;
+							c[3]=(13*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=13*60+00)&&(c_time<13*60+30)){
-							I_digits[0]=L_P;
-							I_digits[1]=12;
-							I_digits[2]=(13*60+30-c_time)/10;
-							I_digits[3]=(13*60+30-c_time)%10;
-							show_dot_flag=0;
+							c[0]='P';
+							c[1]='-';
+							c[2]=(13*60+30-c_time)/10+48;
+							c[3]=(13*60+30-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=13*60+30)&&(c_time<15*60+00)){
-							I_digits[0]=L_S;
-							I_digits[1]=12;
-							I_digits[2]=(15*60+00-c_time)/10;
-							I_digits[3]=(15*60+00-c_time)%10;
-							show_dot_flag=0;
-						}
-					}else if(I_dow==5){
-						fill_time();
-						I_SEG_MODE=SEG_BRIGHT;
-						if(	((I_minute==59)&&(I_hour==7))||
-							((I_minute==44)&&(I_hour==9))||
-							((I_minute==29)&&(I_hour==11))
-						   )
-						{
-							I_SEG_MODE=SEG_ZOOM;
+							c[0]='S';
+							c[1]='-';
+							c[2]=(15*60+00-c_time)/10+48;
+							c[3]=(15*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else{
-							I_SEG_MODE=SEG_BRIGHT;
+							def|=1;
 						}
+					}else{
+						def|=1;
+					}
+				}else if(dow==5){
+					if(	((min==59)&&(hour==7))||
+						((min==44)&&(hour==9))||
+						((min==29)&&(hour==11))
+					   )
+					{
+						display_set_mode(DISPLAY_7SEG_ZOOM);
+						def|=2;
+					}
+					if(((second%10==0)||((second+1)%10==0))&&(1)){
 						if((c_time>=8*60+00)&&(c_time<9*60+30)){
-							I_digits[0]=L_S;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+30-c_time)/10;
-							I_digits[3]=(9*60+30-c_time)%10;
-							show_dot_flag=0;
+							c[0]='S';
+							c[1]='-';
+							c[2]=(9*60+30-c_time)/10+48;
+							c[3]=(9*60+30-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+30)&&(c_time<9*60+45)){
-							I_digits[0]=L_P;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+45-c_time)/10;
-							I_digits[3]=(9*60+45-c_time)%10;
-							show_dot_flag=0;
+							c[0]='P';
+							c[1]='-';
+							c[2]=(9*60+45-c_time)/10+48;
+							c[3]=(9*60+45-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+45)&&(c_time<11*60+15)){
-							I_digits[0]=L_S;
-							I_digits[1]=12;
-							I_digits[2]=(11*60+15-c_time)/10;
-							I_digits[3]=(11*60+15-c_time)%10;
-							show_dot_flag=0;
+							c[0]='S';
+							c[1]='-';
+							c[2]=(11*60+15-c_time)/10+48;
+							c[3]=(11*60+15-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=11*60+15)&&(c_time<11*60+30)){
-							I_digits[0]=L_P;
-							I_digits[1]=12;
-							I_digits[2]=(11*60+30-c_time)/10;
-							I_digits[3]=(11*60+30-c_time)%10;
-							show_dot_flag=0;
+							c[0]='P';
+							c[1]='-';
+							c[2]=(11*60+30-c_time)/10+48;
+							c[3]=(11*60+30-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=11*60+30)&&(c_time<13*60+00)){
-							I_digits[0]=L_S;
-							I_digits[1]=12;
-							I_digits[2]=(13*60+00-c_time)/10;
-							I_digits[3]=(13*60+00-c_time)%10;
-							show_dot_flag=0;
+							c[0]='S';
+							c[1]='-';
+							c[2]=(13*60+00-c_time)/10+48;
+							c[3]=(13*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
+						}else{
+							def|=1;
 						}
-					}else{//weekends
-						fill_time();
-						I_SEG_MODE=SEG_BRIGHT;
+					}else{
+						def|=1;
 					}
-					display_update=0;
-					if(((I_second%10==0)||((I_second+1)%10==0))&&(1)){//use precalculated values
-
-					}else{//default display time all days in all modes
-						fill_time();
+				}else{//weekends
+					def|=1;
+				}
+				if(!(def&2)){
+					if((hour>=20)||(hour<7)){//energy save mode between 20:00-07:00
+						display_set_mode(DISPLAY_7SEG_DIM);
+					}else{
+						display_set_mode(DISPLAY_7SEG_BRIGHT);
 					}
-					old_second=I_second;
 				}
-				show_dcf77_signal_dot();
-				if((I_hour>=20)||(I_hour<7)){//energy save mode between 20:00-07:00
-					I_SEG_MODE=SEG_DIM;
-				}
-				if(check_schedule()==0){
-					switch(get_ir_code()){
-						case IR_MUTE:	wbs_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+				if(def&1){
+					fill_time();
+				}				
+				if(ui_menues_check_schedule()==0){
+					switch(ui_input_get_key()){
+						case UI_INPUT_KEY_OK:	wbs_display_mode=1;
 										break;
-						case IR_CH_PLUS: 	wbs_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_UP: 	wbs_display_mode=50;
 											break;
-						case IR_CH_MINUS: wbs_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_DOWN: wbs_display_mode=60;
 											break;
-						case IR_POWER: 		if(I2C_MP3_detected){
+						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 												I2C_MP3_talkTime();
 											}
 											break;
@@ -501,50 +573,47 @@ void WBS_default(void){
 				}
 				break;
 
-		case 1:	wbs_i=code_input();
+		case 1:	wbs_i=ui_input_code();
 				if(wbs_i==0){//code insert canceld
-					wbs_display_mode=0;display_update=1;
+					wbs_display_mode=0;
 				}else if(wbs_i==1){//code is still entered
 				}else if(wbs_i==1306){//code correctly entered
 					wbs_display_mode=2;
 				}
 				break;
 
-		case 2:	wbs_i=main_menu_input();
+		case 2:	wbs_i=ui_menues_main_menu_input();
 				if(wbs_i==0){//menu canceled
-					wbs_display_mode=0;display_update=1;
+					wbs_display_mode=0;
 				}else if(wbs_i==2){//new show mode
-					wbs_display_mode=0;display_update=1;
+					wbs_display_mode=0;
 				}
 				break;
 
-		case 50:	start_stop_watch();
+		case 50:	clock_start_stop_watch();
 					fill_temp();
 					wbs_display_mode=51;
 					break;
 		case 51:	fill_temp();
-					if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						wbs_display_mode=0;display_update=1;
+					if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						wbs_display_mode=0;
 					}
 					break;
-		case 60:	start_stop_watch();
+		case 60:	clock_start_stop_watch();
 					fill_date();
 					wbs_display_mode=61;
 					break;
-		case 61:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						start_stop_watch();
-						display_update=1;
+		case 61:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						clock_start_stop_watch();
 						wbs_display_mode=62;
 						fill_dow_year(1);
 					}
 					break;
-		case 62:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						wbs_display_mode=0;display_update=1;
+		case 62:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						wbs_display_mode=0;
 					}
 					break;
 		default: 
@@ -554,29 +623,36 @@ void WBS_default(void){
 
 unsigned char bin_display_mode=0;
 unsigned int bin_i=0;
-void bin_default(void){
-	stop_beep_mode=STOP_BEEP_SHORT;
+void ui_display_modes_bin(void){
+	char c[8];
+	unsigned char min,hour,second,day,month,year,dow;
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
 	switch(bin_display_mode){
-		case 0:	if((old_second!=I_second)||(display_update)){
-					I_SEG_MODE=SEG_BRIGHT;
-					I_COLON_MODE=COLON_OFF;
-					display_update=0;
-					I_digits[0]=(I_hour/10)+L_b0;
-					I_digits[1]=(I_hour%10)+L_b0;
-					I_digits[2]=(I_minute/10)+L_b0;
-					I_digits[3]=(I_minute%10)+L_b0;
-					old_second=I_second;
+		case 0:
+				clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+				c[0]=(hour/10);
+				c[1]=' ';
+				c[2]=(hour%10);
+				c[3]=' ';
+				c[4]=(min/10);
+				c[5]=' ';
+				c[6]=(min%10);
+				c[7]=' ';
+				if(get_dcf77_signal_dot()){
+					c[3]='.';
 				}
-				show_dot_flag=1;
-				show_dcf77_signal_dot();
-				if((I_hour>=20)||(I_hour<7)){//energy save mode between 20:00-07:00
-					I_SEG_MODE=SEG_DIM;
+				if((hour>=22)||(hour<=7)){
+					display_set_mode(DISPLAY_7SEG_DIM);
+				}else{
+					display_set_mode(DISPLAY_7SEG_BRIGHT);
 				}
-				if(check_schedule()==0){
-					switch(get_ir_code()){
-						case IR_MUTE:	bin_display_mode=1;show_dot_flag=0;
+				display_set_time(&c[0]);
+			
+				if(ui_menues_check_schedule()==0){
+					switch(ui_input_get_key()){
+						case UI_INPUT_KEY_OK:	bin_display_mode=1;
 										break;
-						case IR_POWER: 		if(I2C_MP3_detected){
+						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 												I2C_MP3_talkTime();
 											}
 											break;
@@ -584,20 +660,20 @@ void bin_default(void){
 				}
 				break;
 
-		case 1:	bin_i=code_input();
+		case 1:	bin_i=ui_input_code();
 				if(bin_i==0){//code insert canceld
-					bin_display_mode=0;display_update=1;
+					bin_display_mode=0;
 				}else if(bin_i==1){//code is still entered
 				}else if(bin_i==1306){//code correctly entered
 					bin_display_mode=2;
 				}
 				break;
 
-		case 2:	bin_i=main_menu_input();
+		case 2:	bin_i=ui_menues_main_menu_input();
 				if(bin_i==0){//menu canceled
-					bin_display_mode=0;display_update=1;
+					bin_display_mode=0;
 				}else if(bin_i==2){//new show mode
-					bin_display_mode=0;display_update=1;
+					bin_display_mode=0;
 				}
 				break;
 
@@ -608,111 +684,116 @@ void bin_default(void){
 
 unsigned char te_display_mode=0;
 unsigned int te_i=0;
-void TE_default(void){
-	stop_beep_mode=STOP_BEEP_SHORT;
+void ui_display_modes_TE(void){
+	char c[4];
+	unsigned char def=0;
 	unsigned int c_time=0;
+	unsigned char min,hour,second,day,month,year,dow;
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
 	switch(te_display_mode){
-		case 0:	if((old_second!=I_second)||(display_update)){
-					I_SEG_MODE=SEG_BRIGHT;
-					I_COLON_MODE=COLON_OFF;
-					c_time=I_minute+I_hour*60;
-					if((I_dow==1)||(I_dow==2)||(I_dow==3)||(I_dow==4)){
+		case 0:	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+				c_time=min+hour*60;
+				if((dow==1)||(dow==2)||(dow==3)||(dow==4)){
+
+					if(((second%15==0)||((second+1)%15==0))&&(1)){
 						if((c_time>=7*60+00)&&(c_time<9*60+00)){
-							I_digits[0]=12;
-							I_digits[1]=(9*60+00-c_time)/100;
-							I_digits[2]=((9*60+00-c_time)%100)/10;
-							I_digits[3]=((9*60+00-c_time)%100)%10;
-							show_dot_flag=0;
+							c[0]='-';
+							c[1]=(9*60+00-c_time)/100+48;
+							c[2]=((9*60+00-c_time)%100)/10+48;
+							c[3]=(9*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+00)&&(c_time<9*60+20)){
-							I_digits[0]=L_P;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+20-c_time)/10;
-							I_digits[3]=(9*60+20-c_time)%10;
-							show_dot_flag=0;
+							c[0]='P';
+							c[1]='-';
+							c[2]=(9*60+20-c_time)/10+48;
+							c[3]=(9*60+20-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+20)&&(c_time<12*60+00)){
-							I_digits[0]=12;
-							I_digits[1]=(12*60+00-c_time)/100;
-							I_digits[2]=((12*60+00-c_time)%100)/10;
-							I_digits[3]=((12*60+00-c_time)%100)%10;
-							show_dot_flag=0;
+							c[0]='-';
+							c[1]=(12*60+00-c_time)/100+48;
+							c[2]=((12*60+00-c_time)%100)/10+48;
+							c[3]=(12*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=12*60+00)&&(c_time<12*60+40)){
-							I_digits[0]=L_P;
-							I_digits[1]=12;
-							I_digits[2]=(12*60+40-c_time)/10;
-							I_digits[3]=(12*60+40-c_time)%10;
-							show_dot_flag=0;
+							c[0]='P';
+							c[1]='-';
+							c[2]=(12*60+40-c_time)/10+48;
+							c[3]=(12*60+40-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=12*60+40)&&(c_time<15*60+00)){
-							I_digits[0]=12;
-							I_digits[1]=(15*60+00-c_time)/100;
-							I_digits[2]=((15*60+00-c_time)%100)/10;
-							I_digits[3]=((15*60+00-c_time)%100)%10;
-							show_dot_flag=0;
-						}else{//outside of TE blocks
-							fill_time();
-							I_SEG_MODE=SEG_BRIGHT;
+							c[0]='-';
+							c[1]=(15*60+00-c_time)/100+48;
+							c[2]=((15*60+00-c_time)%100)/10+48;
+							c[3]=(15*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
+						}else{
+							def|=1;
 						}
-					}else if(I_dow==5){
+					}else{
+						def|=1;
+					}
+				}else if(dow==5){
+					if(((second%15==0)||((second+1)%15==0))&&(1)){
 						if((c_time>=7*60+00)&&(c_time<9*60+00)){
-							I_digits[0]=12;
-							I_digits[1]=(9*60+00-c_time)/100;
-							I_digits[2]=((9*60+00-c_time)%100)/10;
-							I_digits[3]=((9*60+00-c_time)%100)%10;
-							show_dot_flag=0;
+							c[0]='-';
+							c[1]=(9*60+00-c_time)/100+48;
+							c[2]=((9*60+00-c_time)%100)/10+48;
+							c[3]=(9*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+00)&&(c_time<9*60+20)){
-							I_digits[0]=L_P;
-							I_digits[1]=12;
-							I_digits[2]=(9*60+45-c_time)/10;
-							I_digits[3]=(9*60+45-c_time)%10;
-							show_dot_flag=0;
+							c[0]='P';
+							c[1]='-';
+							c[2]=(9*60+20-c_time)/10+48;
+							c[3]=(9*60+20-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=9*60+20)&&(c_time<12*60+00)){
-							I_digits[0]=12;
-							I_digits[1]=(12*60+00-c_time)/100;
-							I_digits[2]=((12*60+00-c_time)%100)/10;
-							I_digits[3]=((12*60+00-c_time)%100)%10;
-							show_dot_flag=0;
+							c[0]='-';
+							c[1]=(12*60+00-c_time)/100+48;
+							c[2]=((12*60+00-c_time)%100)/10+48;
+							c[3]=(12*60+00-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=12*60+00)&&(c_time<12*60+40)){
-							I_digits[0]=L_P;
-							I_digits[1]=12;
-							I_digits[2]=(12*60+40-c_time)/10;
-							I_digits[3]=(12*60+40-c_time)%10;
-							show_dot_flag=0;
+							c[0]='P';
+							c[1]='-';
+							c[2]=(12*60+40-c_time)/10+48;
+							c[3]=(12*60+40-c_time)%10+48;
+							display_set_text(&c[0]);
 						}else if((c_time>=12*60+40)&&(c_time<13*60+45)){
-							I_digits[0]=12;
-							I_digits[1]=(13*60+45-c_time)/100;
-							I_digits[2]=((13*60+45-c_time)%100)/10;
-							I_digits[3]=((13*60+45-c_time)%100)%10;
-							show_dot_flag=0;
-						}else{//outside of TE blocks
-							fill_time();
-							I_SEG_MODE=SEG_BRIGHT;
+							c[0]='-';
+							c[1]=(13*60+45-c_time)/100+48;
+							c[2]=((13*60+45-c_time)%100)/10+48;
+							c[3]=(13*60+45-c_time)%10+48;
+							display_set_text(&c[0]);
+						}else{
+							def|=1;
 						}
-					}else{//weekends
-						fill_time();
-						I_SEG_MODE=SEG_BRIGHT;
+					}else{
+						def|=1;
 					}
-					display_update=0;
-					if(((I_second%15==0)||((I_second+1)%15==0)||((I_second+2)%15==0)||((I_second+3)%15==0))&&(1)){//use precalculated values
-						if(((I_second%15==0)||((I_second+1)%15==0))){
-							fill_date();
-						}
-					}else{//default display time all days in all modes
+				}else{//weekends
+					def|=1;
+				}
+				if((hour>=19)||(hour<6)){//energy save mode between 20:00-07:00
+					display_set_mode(DISPLAY_7SEG_DIM);
+				}else{
+					display_set_mode(DISPLAY_7SEG_BRIGHT);
+				}
+				if(def&1){
+					if((((second%15+2)==0)||((second+3)%15==0))&&(1)){
+						fill_date();
+					}else{
 						fill_time();
 					}
-					old_second=I_second;
-				}
-				show_dcf77_signal_dot();
-				if((I_hour>=19)||(I_hour<6)){//energy save mode between 19:00-05:59
-					I_SEG_MODE=SEG_DIM;
-				}
-				if(check_schedule()==0){
-					switch(get_ir_code()){
-						case IR_MUTE:	te_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+				}				
+				if(ui_menues_check_schedule()==0){
+					switch(ui_input_get_key()){
+						case UI_INPUT_KEY_OK:	te_display_mode=1;
 										break;
-						case IR_CH_PLUS: 	te_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_UP: 	te_display_mode=50;
 											break;
-						case IR_CH_MINUS: te_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_DOWN: te_display_mode=60;
 											break;
-						case IR_POWER: 		if(I2C_MP3_detected){
+						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 												I2C_MP3_talkTime();
 											}
 											break;
@@ -720,50 +801,47 @@ void TE_default(void){
 				}
 				break;
 
-		case 1:	te_i=code_input();
+		case 1:	te_i=ui_input_code();
 				if(te_i==0){//code insert canceld
-					te_display_mode=0;display_update=1;
+					te_display_mode=0;
 				}else if(te_i==1){//code is still entered
 				}else if(te_i==1306){//code correctly entered
 					te_display_mode=2;
 				}
 				break;
 
-		case 2:	te_i=main_menu_input();
+		case 2:	te_i=ui_menues_main_menu_input();
 				if(te_i==0){//menu canceled
-					te_display_mode=0;display_update=1;
+					te_display_mode=0;
 				}else if(te_i==2){//new show mode
-					te_display_mode=0;display_update=1;
+					te_display_mode=0;
 				}
 				break;
 
-		case 50:	start_stop_watch();
+		case 50:	clock_start_stop_watch();
 					fill_temp();
 					te_display_mode=51;
 					break;
 		case 51:	fill_temp();
-					if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						te_display_mode=0;display_update=1;
+					if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						te_display_mode=0;
 					}
 					break;
-		case 60:	start_stop_watch();
+		case 60:	clock_start_stop_watch();
 					fill_date();
 					te_display_mode=61;
 					break;
-		case 61:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						start_stop_watch();
-						display_update=1;
+		case 61:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						clock_start_stop_watch();
 						te_display_mode=62;
 						fill_dow_year(1);
 					}
 					break;
-		case 62:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						te_display_mode=0;display_update=1;
+		case 62:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						te_display_mode=0;
 					}
 					break;
 		default: 
@@ -771,38 +849,34 @@ void TE_default(void){
 	}
 }
 
-unsigned char c1_display_mode=0;
-unsigned int c1_i=0;
-void c1_default(void){
-	stop_beep_mode=STOP_BEEP_SHORT;
-	unsigned int c_time=0;
-
-	switch(c1_display_mode){
-		case 0:	if((old_second!=I_second)||(display_update)){
-					c_time=I_minute+I_hour*60;
-					fill_time();
-					I_SEG_MODE=SEG_DIM;
-					if(I_dow<=5){
-						//default clock: dimmed but every hour for one minute fully on
-						if(I_minute==0){
-							I_SEG_MODE=SEG_BRIGHT;
-						}else{
-							I_SEG_MODE=SEG_DIM;
-						}
-					}else{//weekends
+unsigned char C1_display_mode=0;
+unsigned int C1_i=0;
+void ui_display_modes_C1(void){
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
+	unsigned char min,hour,second,day,month,year,dow;
+	switch(C1_display_mode){
+		case 0:	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+				if(dow<5){
+					//default clock: dimmed but every hour for one minute fully on
+					if(min==0){
+						display_set_mode(DISPLAY_7SEG_BRIGHT);
+					}else{
+						display_set_mode(DISPLAY_7SEG_DIM);
 					}
-					display_update=0;
-					old_second=I_second;
+					fill_time();
+				}else{
+					display_set_mode(DISPLAY_7SEG_DIM);
+					fill_time();
 				}
-				if(check_schedule()==0){
-					switch(get_ir_code()){
-						case IR_MUTE:	c1_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+				if(ui_menues_check_schedule()==0){
+					switch(ui_input_get_key()){
+						case UI_INPUT_KEY_OK:	C1_display_mode=1;
 										break;
-						case IR_CH_PLUS: 	c1_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_UP: 	C1_display_mode=50;
 											break;
-						case IR_CH_MINUS: c1_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_DOWN: C1_display_mode=60;
 											break;
-						case IR_POWER: 		if(I2C_MP3_detected){
+						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 												I2C_MP3_talkTime();
 											}
 											break;
@@ -810,50 +884,47 @@ void c1_default(void){
 				}
 				break;
 
-		case 1:	c1_i=code_input();
-				if(c1_i==0){//code insert canceld
-					c1_display_mode=0;display_update=1;
-				}else if(c1_i==1){//code is still entered
-				}else if(c1_i==1306){//code correctly entered
-					c1_display_mode=2;
+		case 1:	C1_i=ui_input_code();
+				if(C1_i==0){//code insert canceld
+					C1_display_mode=0;
+				}else if(C1_i==1){//code is still entered
+				}else if(C1_i==1306){//code correctly entered
+					C1_display_mode=2;
 				}
 				break;
 
-		case 2:	c1_i=main_menu_input();
-				if(c1_i==0){//menu canceled
-					c1_display_mode=0;display_update=1;
-				}else if(c1_i==2){//new show mode
-					c1_display_mode=0;display_update=1;
+		case 2:	C1_i=ui_menues_main_menu_input();
+				if(C1_i==0){//menu canceled
+					C1_display_mode=0;
+				}else if(C1_i==2){//new show mode
+					C1_display_mode=0;
 				}
 				break;
 
-		case 50:	start_stop_watch();
+		case 50:	clock_start_stop_watch();
 					fill_temp();
-					c1_display_mode=51;
+					C1_display_mode=51;
 					break;
 		case 51:	fill_temp();
-					if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						c1_display_mode=0;display_update=1;
+					if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						C1_display_mode=0;
 					}
 					break;
-		case 60:	start_stop_watch();
+		case 60:	clock_start_stop_watch();
 					fill_date();
-					c1_display_mode=61;
+					C1_display_mode=61;
 					break;
-		case 61:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						start_stop_watch();
-						display_update=1;
-						c1_display_mode=62;
+		case 61:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						clock_start_stop_watch();
+						C1_display_mode=62;
 						fill_dow_year(1);
 					}
 					break;
-		case 62:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						c1_display_mode=0;display_update=1;
+		case 62:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						C1_display_mode=0;
 					}
 					break;
 		default: 
@@ -864,56 +935,48 @@ void c1_default(void){
 
 unsigned char C2_display_mode=0;
 unsigned int C2_i=0;
-void C2_default(void){
-	stop_beep_mode=STOP_BEEP_LONG;
+void ui_display_modes_C2(void){
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_LONG);
+	unsigned char min,hour,second,day,month,year,dow;
 	switch(C2_display_mode){
-		case 0:	if((old_second!=I_second)||(display_update)){
-					cli();
-					I_COLON_MODE=COLON_OFF;
-					if((I_hour>=22)||(I_hour<=7)){
-						I_SEG_MODE=SEG_DIM;
-					}else{
-						I_SEG_MODE=SEG_BRIGHT;
-					}
-					if((I_second%20>=0)&&(I_second%20<=9)){
-						fill_time();
-					}else if((I_second%20>=10)&&(I_second%20<=14)){
-						fill_date();
-					}else if((I_second%20>=15)&&(I_second%20<=20)){
-						fill_temp();
-						show_dot_flag=0;
-					}
-					sei();
-					display_update=0;
-					old_second=I_second;
+		case 0:	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+				if((hour>=22)||(hour<=7)){
+					display_set_mode(DISPLAY_7SEG_DIM);
+				}else{
+					display_set_mode(DISPLAY_7SEG_BRIGHT);
 				}
-				show_dcf77_signal_dot();
-				if(check_schedule()==0){
-					switch(get_ir_code()){
-						case IR_MUTE:	C2_display_mode=1;show_dot_flag=0;
-										I_COLON_MODE=COLON_OFF;
+				if((second%20>=0)&&(second%20<=9)){
+					fill_time();
+				}else if((second%20>=10)&&(second%20<=14)){
+					fill_date();
+				}else if((second%20>=15)&&(second%20<=20)){
+					fill_temp();
+				}
+				if(ui_menues_check_schedule()==0){
+					switch(ui_input_get_key()){
+						case UI_INPUT_KEY_OK:	C2_display_mode=1;
 										break;
-						case IR_POWER: 		if(I2C_MP3_detected){
+						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 												I2C_MP3_talkTime();
 											}
 											break;
 					}
 				}
 				break;
-		case 1:	C2_i=code_input();
+		case 1:	C2_i=ui_input_code();
 				if(C2_i==0){//code insert canceled
-					C2_display_mode=0;display_update=1;
+					C2_display_mode=0;
 				}else if(C2_i==1){//code is still entered
 				}else if(C2_i==1306){//code correctly entered
 					C2_display_mode=2;
 				}
 				break;
 
-		case 2:	C2_i=main_menu_input();
+		case 2:	C2_i=ui_menues_main_menu_input();
 				if(C2_i==0){//menu canceled
-					C2_display_mode=0;display_update=1;
+					C2_display_mode=0;
 				}else if(C2_i==2){//new show mode
-					C2_display_mode=0;display_update=1;
+					C2_display_mode=0;
 				}
 				break;
 		default: 
@@ -925,83 +988,72 @@ void C2_default(void){
 
 unsigned char C3_display_mode=0;
 unsigned int C3_i=0;
-void C3_default(void){
-	stop_beep_mode=STOP_BEEP_SHORT;
+void ui_display_modes_C3(void){
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
+	unsigned char min,hour,second,day,month,year,dow;
 	switch(C3_display_mode){
-		case 0:	if((old_second!=I_second)||(display_update)){
-					cli();
-					if((I_hour>=22)||(I_hour<=7)){
-						I_SEG_MODE=SEG_DIM;
-					}else{
-						I_SEG_MODE=SEG_BRIGHT;
-					}
-					fill_time();
-					I_COLON_MODE=COLON_OFF;
-					sei();
-					display_update=0;
-					show_dot_flag=1;
-					old_second=I_second;
+		case 0:	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+				if((hour>=22)||(hour<=7)){
+					display_set_mode(DISPLAY_7SEG_DIM);
+				}else{
+					display_set_mode(DISPLAY_7SEG_BRIGHT);
 				}
-				show_dcf77_signal_dot();
-				if(check_schedule()==0){
-					switch(get_ir_code()){
-						case IR_MUTE:	C3_display_mode=2;show_dot_flag=0;
-										I_COLON_MODE=COLON_OFF;
+				fill_time();
+				if(ui_menues_check_schedule()==0){
+					switch(ui_input_get_key()){
+						case UI_INPUT_KEY_OK:	C3_display_mode=2;
 										break;
-						case IR_CH_PLUS: 	C3_display_mode=50;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_UP: 	C3_display_mode=50;
 											break;
-						case IR_CH_MINUS: C3_display_mode=60;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+						case UI_INPUT_KEY_DOWN: C3_display_mode=60;
 											break;
-						case IR_POWER: 		if(I2C_MP3_detected){
+						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 												I2C_MP3_talkTime();
 											}
 											break;
 					}
 				}
 				break;
-		case 1:	C3_i=code_input();
+		case 1:	C3_i=ui_input_code();
 				if(C3_i==0){//code insert canceled
-					C3_display_mode=0;display_update=1;
+					C3_display_mode=0;
 				}else if(C3_i==1){//code is still entered
 				}else if(C3_i==1306){//code correctly entered
 					C3_display_mode=2;
 				}
 				break;
 
-		case 2:	C3_i=main_menu_input();
+		case 2:	C3_i=ui_menues_main_menu_input();
 				if(C3_i==0){//menu canceled
-					C3_display_mode=0;display_update=1;
+					C3_display_mode=0;
 				}else if(C3_i==2){//new show mode
-					C3_display_mode=0;display_update=1;
+					C3_display_mode=0;
 				}
 				break;
-		case 50:	start_stop_watch();
+		case 50:	clock_start_stop_watch();
 					fill_temp();
 					C3_display_mode=51;
 					break;
 		case 51:	fill_temp();
-					if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						C3_display_mode=0;display_update=1;
+					if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						C3_display_mode=0;
 					}
 					break;
-		case 60:	start_stop_watch();
+		case 60:	clock_start_stop_watch();
 					fill_date();
 					C3_display_mode=61;
 					break;
-		case 61:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						start_stop_watch();
-						display_update=1;
+		case 61:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						clock_start_stop_watch();
 						C3_display_mode=62;
 						fill_dow_year(0);
 					}
 					break;
-		case 62:	if(get_stop_watch()*4>2000){//2seconds waiting
-						stop_stop_watch();
-						display_update=1;
-						C3_display_mode=0;display_update=1;
+		case 62:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						C3_display_mode=0;
 					}
 					break;
 		default: 
@@ -1013,34 +1065,29 @@ void C3_default(void){
 
 
 #define CORR_TEMP -55
-unsigned long ad_res=0;
+//unsigned long ad_res=0;
 unsigned char simple_display_mode=0;
 unsigned int simple_i=0;
-void simple_default(void){
-	stop_beep_mode=STOP_BEEP_SHORT;
+void ui_display_modes_simple(void){
+	unsigned char min,hour,second,day,month,year,dow;
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
 		switch(simple_display_mode){
-			case 0:	if((old_second!=I_second)||(display_update)){
-						display_update=0;
-						I_COLON_MODE=COLON_OFF;
-						if(I_second%10==0){
-							fill_temp();
-							show_dot_flag=0;
-						}else{
-							fill_time();
-						}
-						if((I_hour>=22)&&(I_hour<7)){
-							I_SEG_MODE=SEG_DIM;
-						}else{
-							I_SEG_MODE=SEG_BRIGHT;
-						}
-						old_second=I_second;
+			case 0:	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+					if((hour>=22)&&(hour<7)){
+						display_set_mode(DISPLAY_7SEG_DIM);
+					}else{
+						display_set_mode(DISPLAY_7SEG_BRIGHT);
 					}
-					show_dcf77_signal_dot();
-					if(check_schedule()==0){
-						switch(get_ir_code()){
-							case IR_MUTE:	simple_display_mode=1;I_COLON_MODE=COLON_OFF;show_dot_flag=0;
+					if(second%10==0){
+						fill_temp();
+					}else{
+						fill_time();
+					}
+					if(ui_menues_check_schedule()==0){
+						switch(ui_input_get_key()){
+							case UI_INPUT_KEY_OK:	simple_display_mode=1;
 											break;
-							case IR_POWER: 		if(I2C_MP3_detected){
+							case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 													I2C_MP3_talkTime();
 												}
 												break;
@@ -1048,19 +1095,19 @@ void simple_default(void){
 					}
 				break;
 
-		case 1:	simple_i=code_input();
+		case 1:	simple_i=ui_input_code();
 				if(simple_i==0){//code insert canceld
-					simple_display_mode=0;display_update=1;
+					simple_display_mode=0;;
 				}else if(simple_i==1){//code is still entered
 				}else if(simple_i==1306){//code correctly entered
 					simple_display_mode=2;
 				}
 				break;
-		case 2:	simple_i=main_menu_input();
+		case 2:	simple_i=ui_menues_main_menu_input();
 				if(simple_i==0){//menu canceled
-					simple_display_mode=0;display_update=1;
+					simple_display_mode=0;
 				}else if(simple_i==2){//new show mode
-					simple_display_mode=0;display_update=1;
+					simple_display_mode=0;
 				}
 				break;
 	}
@@ -1069,67 +1116,73 @@ void simple_default(void){
 unsigned char version_display_mode=0;
 //0 version display finished
 //1 still busy
-unsigned char version_default(void){
+unsigned char ui_display_modes_version(void){
+	char c[4];
+	unsigned char polarity=settings_get(SETTINGS_SEGMENT_MODE);
 	switch(version_display_mode){
-		case 0:	I_digits[0]=L_v;
-				I_digits[1]=VERSION_1;
-				I_digits[2]=VERSION_2;
-				I_digits[3]=VERSION_3;
-				stop_stop_watch();
-				start_stop_watch();
+		case 0:	display_set_text(VERSION);
+				clock_stop_stop_watch();
+				clock_start_stop_watch();
 				version_display_mode++;
 				break;
-		case 1:	if(get_stop_watch()*4>2500){//2.5seconds waiting
-					stop_stop_watch();
-					start_stop_watch();
-					display_update=1;
-					I_SEG_MODE=SEG_DIM;
+		case 1:	if(clock_get_stop_watch()*4>2500){//2.5seconds waiting
+					clock_stop_stop_watch();
+					clock_start_stop_watch();
+					display_set_mode(DISPLAY_7SEG_DIM);
 					version_display_mode=2;
 				}
 				break;
-		case 2:	if(get_stop_watch()*4>2500){//2.5seconds waiting
-					stop_stop_watch();
-					display_update=1;
+		case 2:	if(clock_get_stop_watch()*4>2500){//2.5seconds waiting
+					clock_stop_stop_watch();
 					version_display_mode=0;
-					I_SEG_MODE=SEG_BRIGHT;
+					display_set_mode(DISPLAY_7SEG_BRIGHT);
 					return 0;
 				}
+				c[0]=' ';
+				c[1]=' ';
+				c[2]=' ';
+				c[3]=' ';
+				if(fixed_mode==0){
+					c[3]=' ';
+				}else{
+					c[3]='F';
+				}
+				if(dcf77_get_signal_type()==DCF77_SIGNAL_TYPE_NORMAL){
+					c[0]='N';
+				}else{
+					c[0]='I';
+				}
+				display_set_text(&c[0]);
 				break;
 		default: break;
 	}
-	switch(get_ir_code()){
-			case IR_MUTE:	if(segment_mode==0){
-								segment_mode=1;
+	switch(ui_input_get_key()){
+			case UI_INPUT_KEY_OK:	if(polarity==DISPLAY_7SEG_POLARITY_NORMAL){
+								polarity=DISPLAY_7SEG_POLARITY_INV;
 							}else{
-								segment_mode=0;
+								polarity=DISPLAY_7SEG_POLARITY_NORMAL;
 							}
-							eeprom_write_byte ((uint8_t*)16, segment_mode);
+							display_set_polarity(polarity);
+							settings_save(SETTINGS_SEGMENT_MODE,polarity);
+							clock_stop_stop_watch();clock_start_stop_watch();
 							break;
-			case IR_POWER:	if(fixed_mode==0){
+			case UI_INPUT_KEY_BACK:	if(fixed_mode==0){
 								fixed_mode=1;
 							}else{
 								fixed_mode=0;
 							}
-							eeprom_write_byte ((uint8_t*)17, fixed_mode);
+							settings_save(SETTINGS_DISPLAY_FIXED_MODE,fixed_mode);
+							clock_stop_stop_watch();clock_start_stop_watch();
 							break;
-			case IR_CH_MINUS:
-							if(dcf77_inverted_flag==0){
-								dcf77_inverted_flag=0x80;
+			case UI_INPUT_KEY_DOWN:
+							if(dcf77_get_signal_type()==DCF77_SIGNAL_TYPE_NORMAL){
+								dcf77_set_signal_type(DCF77_SIGNAL_TYPE_INVERTED);
 							}else{
-								dcf77_inverted_flag=0;
+								dcf77_set_signal_type(DCF77_SIGNAL_TYPE_NORMAL);
 							}
-							eeprom_write_byte ((uint8_t*)18, dcf77_inverted_flag);
+							settings_save(SETTINGS_DCF77_SIGNAL_TYPE,dcf77_get_signal_type());
+							clock_stop_stop_watch();clock_start_stop_watch();
 							break;
-	}
-	if(fixed_mode==0){
-		I_digits[3]&=~0x80;
-	}else{
-		I_digits[3]|=0x80;
-	}
-	if(dcf77_inverted_flag==0){
-		I_digits[0]&=~0x80;
-	}else{
-		I_digits[0]|=0x80;
 	}
 	return 1;
 }
