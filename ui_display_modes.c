@@ -363,7 +363,7 @@ void ui_display_modes_TA(void){
 				}
 				if(ui_menues_check_schedule()==0){
 					switch(ui_input_get_key()){
-						case UI_INPUT_KEY_OK:	ta_display_mode=1;
+						case UI_INPUT_KEY_OK:	ta_display_mode=2;
 										break;
 						case UI_INPUT_KEY_UP: 	ta_display_mode=50;
 											break;
@@ -377,14 +377,14 @@ void ui_display_modes_TA(void){
 				}
 				break;
 
-		case 1:	ta_i=ui_input_code();
+		/*case 1:	ta_i=ui_input_code();
 				if(ta_i==0){//code insert canceld
 					ta_display_mode=0;
 				}else if(ta_i==1){//code is still entered
 				}else if(ta_i==1306){//code correctly entered
 					ta_display_mode=2;
 				}
-				break;
+				break;*/
 
 		case 2:	ta_i=ui_menues_main_menu_input();
 				if(ta_i==0){//menu canceled
@@ -559,7 +559,7 @@ void ui_display_modes_WBS(void){
 				}				
 				if(ui_menues_check_schedule()==0){
 					switch(ui_input_get_key()){
-						case UI_INPUT_KEY_OK:	wbs_display_mode=1;
+						case UI_INPUT_KEY_OK:	wbs_display_mode=2;
 										break;
 						case UI_INPUT_KEY_UP: 	wbs_display_mode=50;
 											break;
@@ -573,14 +573,14 @@ void ui_display_modes_WBS(void){
 				}
 				break;
 
-		case 1:	wbs_i=ui_input_code();
+		/*case 1:	wbs_i=ui_input_code();
 				if(wbs_i==0){//code insert canceld
 					wbs_display_mode=0;
 				}else if(wbs_i==1){//code is still entered
 				}else if(wbs_i==1306){//code correctly entered
 					wbs_display_mode=2;
 				}
-				break;
+				break;*/
 
 		case 2:	wbs_i=ui_menues_main_menu_input();
 				if(wbs_i==0){//menu canceled
@@ -650,7 +650,7 @@ void ui_display_modes_bin(void){
 			
 				if(ui_menues_check_schedule()==0){
 					switch(ui_input_get_key()){
-						case UI_INPUT_KEY_OK:	bin_display_mode=1;
+						case UI_INPUT_KEY_OK:	bin_display_mode=2;
 										break;
 						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 												I2C_MP3_talkTime();
@@ -660,14 +660,14 @@ void ui_display_modes_bin(void){
 				}
 				break;
 
-		case 1:	bin_i=ui_input_code();
+		/*case 1:	bin_i=ui_input_code();
 				if(bin_i==0){//code insert canceld
 					bin_display_mode=0;
 				}else if(bin_i==1){//code is still entered
 				}else if(bin_i==1306){//code correctly entered
 					bin_display_mode=2;
 				}
-				break;
+				break;*/
 
 		case 2:	bin_i=ui_menues_main_menu_input();
 				if(bin_i==0){//menu canceled
@@ -787,7 +787,7 @@ void ui_display_modes_TE(void){
 				}				
 				if(ui_menues_check_schedule()==0){
 					switch(ui_input_get_key()){
-						case UI_INPUT_KEY_OK:	te_display_mode=1;
+						case UI_INPUT_KEY_OK:	te_display_mode=2;
 										break;
 						case UI_INPUT_KEY_UP: 	te_display_mode=50;
 											break;
@@ -801,14 +801,14 @@ void ui_display_modes_TE(void){
 				}
 				break;
 
-		case 1:	te_i=ui_input_code();
+		/*case 1:	te_i=ui_input_code();
 				if(te_i==0){//code insert canceld
 					te_display_mode=0;
 				}else if(te_i==1){//code is still entered
 				}else if(te_i==1306){//code correctly entered
 					te_display_mode=2;
 				}
-				break;
+				break;*/
 
 		case 2:	te_i=ui_menues_main_menu_input();
 				if(te_i==0){//menu canceled
@@ -870,7 +870,7 @@ void ui_display_modes_C1(void){
 				}
 				if(ui_menues_check_schedule()==0){
 					switch(ui_input_get_key()){
-						case UI_INPUT_KEY_OK:	C1_display_mode=1;
+						case UI_INPUT_KEY_OK:	C1_display_mode=2;
 										break;
 						case UI_INPUT_KEY_UP: 	C1_display_mode=50;
 											break;
@@ -884,14 +884,14 @@ void ui_display_modes_C1(void){
 				}
 				break;
 
-		case 1:	C1_i=ui_input_code();
+		/*case 1:	C1_i=ui_input_code();
 				if(C1_i==0){//code insert canceld
 					C1_display_mode=0;
 				}else if(C1_i==1){//code is still entered
 				}else if(C1_i==1306){//code correctly entered
 					C1_display_mode=2;
 				}
-				break;
+				break;*/
 
 		case 2:	C1_i=ui_menues_main_menu_input();
 				if(C1_i==0){//menu canceled
@@ -954,7 +954,7 @@ void ui_display_modes_C2(void){
 				}
 				if(ui_menues_check_schedule()==0){
 					switch(ui_input_get_key()){
-						case UI_INPUT_KEY_OK:	C2_display_mode=1;
+						case UI_INPUT_KEY_OK:	C2_display_mode=2;
 										break;
 						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 												I2C_MP3_talkTime();
@@ -963,14 +963,14 @@ void ui_display_modes_C2(void){
 					}
 				}
 				break;
-		case 1:	C2_i=ui_input_code();
+		/*case 1:	C2_i=ui_input_code();
 				if(C2_i==0){//code insert canceled
 					C2_display_mode=0;
 				}else if(C2_i==1){//code is still entered
 				}else if(C2_i==1306){//code correctly entered
 					C2_display_mode=2;
 				}
-				break;
+				break;*/
 
 		case 2:	C2_i=ui_menues_main_menu_input();
 				if(C2_i==0){//menu canceled
@@ -1014,14 +1014,14 @@ void ui_display_modes_C3(void){
 					}
 				}
 				break;
-		case 1:	C3_i=ui_input_code();
+		/*case 1:	C3_i=ui_input_code();
 				if(C3_i==0){//code insert canceled
 					C3_display_mode=0;
 				}else if(C3_i==1){//code is still entered
 				}else if(C3_i==1306){//code correctly entered
 					C3_display_mode=2;
 				}
-				break;
+				break;*/
 
 		case 2:	C3_i=ui_menues_main_menu_input();
 				if(C3_i==0){//menu canceled
@@ -1085,7 +1085,7 @@ void ui_display_modes_simple(void){
 					}
 					if(ui_menues_check_schedule()==0){
 						switch(ui_input_get_key()){
-							case UI_INPUT_KEY_OK:	simple_display_mode=1;
+							case UI_INPUT_KEY_OK:	simple_display_mode=2;
 											break;
 							case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
 													I2C_MP3_talkTime();
@@ -1095,14 +1095,14 @@ void ui_display_modes_simple(void){
 					}
 				break;
 
-		case 1:	simple_i=ui_input_code();
+		/*case 1:	simple_i=ui_input_code();
 				if(simple_i==0){//code insert canceld
 					simple_display_mode=0;;
 				}else if(simple_i==1){//code is still entered
 				}else if(simple_i==1306){//code correctly entered
 					simple_display_mode=2;
 				}
-				break;
+				break;*/
 		case 2:	simple_i=ui_menues_main_menu_input();
 				if(simple_i==0){//menu canceled
 					simple_display_mode=0;
@@ -1142,6 +1142,9 @@ unsigned char ui_display_modes_version(void){
 				c[1]=' ';
 				c[2]=' ';
 				c[3]=' ';
+				if(ui_menues_get_code()>=0){
+					c[2]='P';
+				}
 				if(fixed_mode==0){
 					c[3]=' ';
 				}else{
@@ -1182,6 +1185,11 @@ unsigned char ui_display_modes_version(void){
 							}
 							settings_save(SETTINGS_DCF77_SIGNAL_TYPE,dcf77_get_signal_type());
 							clock_stop_stop_watch();clock_start_stop_watch();
+							break;
+			case UI_INPUT_KEY_UP:
+							ui_menues_set_code(-1);
+							settings_save(SETTINGS_UI_MENUES_CODE_32,ui_menues_get_code()>>8);
+							settings_save(SETTINGS_UI_MENUES_CODE_10,ui_menues_get_code()&0xFF);
 							break;
 	}
 	return 1;

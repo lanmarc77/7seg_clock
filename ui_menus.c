@@ -31,6 +31,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "settings.h"
 
 
+signed int ui_menues_code=-1;
+signed int ui_menues_get_code(void){
+	return ui_menues_code;
+}
+
+void ui_menues_set_code(signed int code){
+	if(code==0){
+		code=-1;
+	}
+	ui_menues_code=code;
+}
 
 unsigned char cont_mode=UI_MENUES_CONT_MODE_ON;
 
@@ -44,6 +55,69 @@ unsigned char ui_menues_get_cont_mode(void){
 	return cont_mode;
 }
 
+
+unsigned char setup_code_state=0;
+signed  int setup_code_code_1=0;
+signed  int setup_code_code_2=0;
+unsigned int setup_code(void){
+	char c[4];c[0]=' ';c[1]=':';c[2]=' ';c[3]=' ';
+	switch(setup_code_state){
+		case 0: setup_code_code_1=ui_input_code();
+				if(setup_code_code_1==-1){//code insert canceled
+					setup_code_state=0;
+					return 0;
+				}
+				if(setup_code_code_1==-2){//code still entered
+				}else if(setup_code_code_1>=0){//code entered
+					setup_code_state=1;
+				}
+				break;
+		case 1: setup_code_code_2=ui_input_code();
+				if(setup_code_code_2==-1){//code insert canceled
+					setup_code_state=0;
+					return 0;
+				}
+				if(setup_code_code_2==-2){//code still entered
+				}else if(setup_code_code_2>=0){//code entered
+					if(setup_code_code_1==setup_code_code_2){
+						if(setup_code_code_1==0){
+							setup_code_code_1=-1;
+						}
+						ui_menues_set_code(setup_code_code_1);
+						settings_save(SETTINGS_UI_MENUES_CODE_32,ui_menues_get_code()>>8);
+						settings_save(SETTINGS_UI_MENUES_CODE_10,ui_menues_get_code()&0xFF);
+						if(ui_menues_get_code()<0){
+							setup_code_state=3;
+						}else{
+							setup_code_state=4;
+						}
+						clock_stop_stop_watch();clock_start_stop_watch();
+					}else{
+						setup_code_state=2;clock_stop_stop_watch();clock_start_stop_watch();
+					}
+				}
+				break;
+		case 2:if(clock_get_stop_watch()*4>2000){//2seconds waiting
+					setup_code_state=0;
+					return 0;
+				}
+				display_set_text("Err ");
+				break;
+		case 3:if(clock_get_stop_watch()*4>2000){//2seconds waiting
+					setup_code_state=0;
+					return 0;
+				}
+				display_set_text("off ");
+				break;
+		case 4:if(clock_get_stop_watch()*4>2000){//2seconds waiting
+					setup_code_state=0;
+					return 0;
+				}
+				display_set_text("ok  ");
+				break;
+	}
+	return 1;
+}
 
 unsigned char dimm_display_mode=0;
 unsigned char dimm_save_value=0;
@@ -1237,10 +1311,14 @@ unsigned char mp3_volume=55;
 //2 if the show mode was changed
 unsigned int ui_menues_main_menu_input(void){
 	unsigned char c=0;
+	signed int code=0;
 	char text[8];
 	switch(main_menu_display_mode){
 		case 0:	clock_stop_stop_watch();clock_start_stop_watch();
 				main_menu_display_mode=1;display_set_mode(DISPLAY_7SEG_BRIGHT);
+				if(ui_menues_get_code()>=0){
+					main_menu_display_mode=250;
+				}
 				break;
 		case 1:	if(clock_get_stop_watch()*4>10000){//10seconds waiting
 						main_menu_display_mode=0;
@@ -1339,8 +1417,25 @@ unsigned int ui_menues_main_menu_input(void){
 				}
 				display_set_text("Dot ");
 				break;
-
 		case 6:	if(clock_get_stop_watch()*4>10000){//10seconds waiting
+						main_menu_display_mode=0;
+						return 0;
+				}
+				switch(ui_input_get_key()){
+					case UI_INPUT_KEY_BACK: 	main_menu_display_mode=0;
+									return 0;
+									break;
+					case UI_INPUT_KEY_UP: 	main_menu_display_mode=7;clock_stop_stop_watch();clock_start_stop_watch();
+										break;
+					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=5;clock_stop_stop_watch();clock_start_stop_watch();
+										break;
+					case UI_INPUT_KEY_OK: 	dot_setup=ui_display_modes_get_dot_mode();main_menu_display_mode=150;clock_stop_stop_watch();clock_start_stop_watch();
+										break;
+				}
+				display_set_text("PW  ");
+				break;
+				
+		case 7:	if(clock_get_stop_watch()*4>10000){//10seconds waiting
 						main_menu_display_mode=0;
 						return 0;
 				}
@@ -1357,7 +1452,7 @@ unsigned int ui_menues_main_menu_input(void){
 											main_menu_display_mode=18;
 										}
 										break;
-					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=5;clock_stop_stop_watch();clock_start_stop_watch();
+					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=6;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 					case UI_INPUT_KEY_OK: 	main_menu_display_mode=70;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
@@ -1374,7 +1469,7 @@ unsigned int ui_menues_main_menu_input(void){
 									break;
 					case UI_INPUT_KEY_UP: 	main_menu_display_mode=16;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
-					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=6;clock_stop_stop_watch();clock_start_stop_watch();
+					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=7;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 					case UI_INPUT_KEY_OK: 	main_menu_display_mode=100;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
@@ -1441,7 +1536,7 @@ unsigned int ui_menues_main_menu_input(void){
 					case UI_INPUT_KEY_DOWN: 	if(I2C_MP3_detected){
 											main_menu_display_mode=17;
 										}else{
-											main_menu_display_mode=6;
+											main_menu_display_mode=7;
 										}
 										clock_stop_stop_watch();clock_start_stop_watch();
 										break;
@@ -1468,7 +1563,7 @@ unsigned int ui_menues_main_menu_input(void){
 					}
 					break;
 		case 70:	if(setup_dimm()==0){
-						main_menu_display_mode=6;clock_stop_stop_watch();clock_start_stop_watch();
+						main_menu_display_mode=7;clock_stop_stop_watch();clock_start_stop_watch();
 					}
 					break;
 		case 80:	if(setup_alm_time()==0){
@@ -1614,6 +1709,24 @@ unsigned int ui_menues_main_menu_input(void){
 							break;
 				}
 				break;
+		case 150:	if(setup_code()==0){
+						main_menu_display_mode=6;clock_stop_stop_watch();clock_start_stop_watch();
+					}
+					break;
+		case 250:	code=ui_input_code();
+					if(code==-1){
+						main_menu_display_mode=0;clock_stop_stop_watch();
+						return 0;
+					}else if(code == -2){
+					}else if(code>=0){
+						if(code==ui_menues_get_code()){
+							main_menu_display_mode=1;clock_stop_stop_watch();clock_start_stop_watch();
+						}else{
+							main_menu_display_mode=0;clock_stop_stop_watch();
+							return 0;
+						}
+					}
+					break;
 		default: main_menu_display_mode=0;return 0;break;
 	}
 	return 1;

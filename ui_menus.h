@@ -38,6 +38,8 @@ extern void ui_menues_set_alarm_minute(unsigned char m);
 extern void ui_menues_set_alarm_mp3_track(unsigned char m);
 
 
+extern signed int ui_menues_get_code(void);
+extern void ui_menues_set_code(signed int code);
 
 #define UI_MENUES_CONT_MODE_ON 0
 #define UI_MENUES_CONT_MODE_OFF 1

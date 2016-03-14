@@ -34,6 +34,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SETTINGS_DST_MODE 21
 #define SETTINGS_ANIM_MODE 22
 #define SETTINGS_UI_DISPLAY_DOT_MODE 23
+#define SETTINGS_UI_MENUES_CODE_10 24
+#define SETTINGS_UI_MENUES_CODE_32 25
 
 #define SETTINGS_MAX_SCHEDULES 50
 #define SETTINGS_SCHEDULE_OFFSET 100

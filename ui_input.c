@@ -358,7 +358,7 @@ unsigned char ui_input_get_digits(unsigned char keys, unsigned char pw_mode, uns
 //returns the entered 4 digit code as int value
 //0 if the code entering was interrupted
 //1 if code is still entered
-unsigned int ui_input_code(void){
+/*unsigned int ui_input_code(void){
 	unsigned int code=0;
 	switch(ui_input_get_digits(4,1,15000,"Code",&code)){//number of keys
 		case 0:	return 0;
@@ -371,7 +371,76 @@ unsigned int ui_input_code(void){
 	//I_SEG_MODE=SEG_BRIGHT;
 	display_set_mode(DISPLAY_7SEG_BRIGHT);
 	return 1;
+}*/
+
+unsigned char ui_input_code_state=0;
+unsigned char ui_input_code_digit=0;
+unsigned char ui_input_code_cnt=0;
+unsigned int code=0;
+signed char ui_input_code_ok=-1;
+signed int ui_input_code(void){
+
+
+	switch(ui_input_code_state){
+		case 0:	clock_stop_stop_watch();clock_start_stop_watch();
+				ui_input_code_digit=0;ui_input_code_cnt=0;
+				ui_input_code_state=1;code=0;ui_input_code_ok=-1;
+				ir_c[0]='C';
+				ir_c[1]='o';
+				ir_c[2]='d';
+				ir_c[3]='e';
+				display_set_text(&ir_c[0]);
+				break;
+		case 1:	if((clock_get_stop_watch()*4)>2000){//2 seconds
+					clock_stop_stop_watch();clock_start_stop_watch();
+					ui_input_code_state=2;
+					ir_c[0]='-';
+					ir_c[1]='-';
+					ir_c[2]='-';
+					ir_c[3]='-';
+					display_set_text(&ir_c[0]);
+				}
+				break;
+		case 2:	if((clock_get_stop_watch()*4)>1250){//every second
+					clock_stop_stop_watch();clock_start_stop_watch();
+					if((ui_input_code_ok==ui_input_code_digit)&&(ui_input_code_cnt%10==9)){
+						ui_input_code_cnt=0;
+						ui_input_code_digit++;
+						if(ui_input_code_digit==4){
+							ui_input_code_state=0;
+							return code;
+						}
+						code=code*10;
+					}else{
+						ui_input_code_cnt++;
+						if(ui_input_code_cnt>39){
+							ui_input_code_state=0;
+							return -1;
+						}
+					}
+				}
+				switch(ui_input_get_key()){
+					case UI_INPUT_KEY_BACK:	ui_input_code_state=0;return -1;
+											break;
+					case UI_INPUT_KEY_UP:
+											break;
+					case UI_INPUT_KEY_DOWN:
+											break;
+					case UI_INPUT_KEY_OK:	code=(code/10)*10+ui_input_code_cnt%10;
+											ui_input_code_ok=ui_input_code_digit;
+											break;
+				}
+				ir_c[0]='-';
+				ir_c[1]='-';
+				ir_c[2]='-';
+				ir_c[3]='-';
+				ir_c[ui_input_code_digit]=ui_input_code_cnt%10+48;
+				display_set_text(&ir_c[0]);
+				break;
+	}
+	return -2;
 }
+
 
 void ui_input_init(void){
 	//RC5 signal

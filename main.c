@@ -128,6 +128,7 @@ int main (void)
 		clock_set_dst_mode(settings_get(SETTINGS_DST_MODE));
 		display_set_anim_mode(settings_get(SETTINGS_ANIM_MODE));
 		ui_display_modes_set_dot_mode(settings_get(SETTINGS_UI_DISPLAY_DOT_MODE));
+		ui_menues_set_code((settings_get(SETTINGS_UI_MENUES_CODE_32)<<8)|settings_get(SETTINGS_UI_MENUES_CODE_10));
 		
 		sei();
 		set_sleep_mode(SLEEP_MODE_IDLE);

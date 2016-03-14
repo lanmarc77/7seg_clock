@@ -64,8 +64,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	 added volume setup for ambient and sleep mp3 tracks
 	 changed initial setup screen for inverted dcf, inverted 7segment and fixed mode
 	 added support for I2C button/ir module
+013: code can now be changed and is stored in eeprom
+	 new way of entering code to avoid eves dropping
+
 */
 
-#define VERSION "v012"
+#define VERSION "v013"
 
 #endif

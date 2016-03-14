@@ -31,7 +31,7 @@ extern void ui_input_simulate(unsigned char k);
 extern void ui_input_init(void);
 
 extern unsigned char ui_input_get_digits(unsigned char keys, unsigned char pw_mode, unsigned int timeout,char *t,unsigned int *res);
-extern unsigned int ui_input_code(void);
+extern signed int ui_input_code(void);
 
 
 #endif
