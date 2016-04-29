@@ -52,7 +52,7 @@ unsigned char ui_display_modes_get_mode(void){
 
 void ui_display_modes_set_mode(unsigned char c){
 	cli();
-	if(c>7){
+	if(c>9){
 		c=2;
 	}
 	display_mode=c;
@@ -1194,5 +1194,218 @@ unsigned char ui_display_modes_version(void){
 	}
 	return 1;
 }
+
+// Display Mode for the Beuth Hochschule für Technik
+unsigned char bht_display_mode=0;
+unsigned int bht_i=0;
+void ui_display_modes_BHT(void){
+	unsigned char def=0;
+	unsigned int c_time=0;
+	char c[4];
+	unsigned char min,hour,second,day,month,year,dow;
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
+	switch(bht_display_mode){
+		case 0:	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+				c_time=min+hour*60;
+				if((dow==1)||(dow==2)||(dow==3)||(dow==4)||(dow==5)){ // Jeden Tag die selben Zeiten
+					if(	((min==59)&&(hour==7))||
+						((min==59)&&(hour==9))||
+						((min==14)&&(hour==12))||
+						((min==14)&&(hour==14))||
+						((min==59)&&(hour==15))||
+						((min==44)&&(hour==17))
+					   )
+					{
+						display_set_mode(DISPLAY_7SEG_ZOOM);
+						def|=2;
+					}
+					if(((second%10==0)||((second+1)%10==0))&&(1)){
+						if((c_time>=8*60+00)&&(c_time<9*60+30)){ // 8:00 - 9:30 Block
+							c[0]='L';
+							c[1]='-';
+							c[2]=(9*60+30-c_time)/10;
+							c[3]=(9*60+30-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=9*60+30)&&(c_time<10*60+00)){   // 9:30 - 10:00 Pause
+							c[0]='b';
+							c[1]='-';
+							c[2]=(10*60+00-c_time)/10;
+							c[3]=(10*60+00-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=10*60+00)&&(c_time<11*60+30)){  // 10:00 - 11:30 Block
+							c[0]='L';
+							c[1]='-';
+							c[2]=(11*60+30-c_time)/10;
+							c[3]=(11*60+30-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=11*60+30)&&(c_time<12*60+15)){ // 11:30 - 12:15 Pause
+							c[0]='b';
+							c[1]='-';
+							c[2]=(12*60+15-c_time)/10;
+							c[3]=(12*60+15-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=12*60+15)&&(c_time<13*60+45)){ // 12:15 - 13:45 Block
+							c[0]='L';
+							c[1]='-';
+							c[2]=(13*60+45-c_time)/10;
+							c[3]=(13*60+45-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=13*60+45)&&(c_time<14*60+15)){ // 13:45 - 14:15 Pause
+							c[0]='b';
+							c[1]='-';
+							c[2]=(14*60+15-c_time)/10;
+							c[3]=(14*60+15-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=14*60+15)&&(c_time<15*60+45)){ // 14:15 - 15:45 Block
+							c[0]='L';
+							c[1]='-';
+							c[2]=(15*60+45-c_time)/10;
+							c[3]=(15*60+45-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=15*60+45)&&(c_time<16*60+00)){ // 15:45 - 16:00 Pause
+							c[0]='b';
+							c[1]='-';
+							c[2]=(16*60+00-c_time)/10;
+							c[3]=(16*60+00-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=16*60+00)&&(c_time<17*60+30)){ // 16:00 - 17:30 Block
+							c[0]='L';
+							c[1]='-';
+							c[2]=(17*60+30-c_time)/10;
+							c[3]=(17*60+30-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=17*60+30)&&(c_time<17*60+45)){ // 17:30 - 17:45 Pause
+							c[0]='b';
+							c[1]='-';
+							c[2]=(17*60+45-c_time)/10;
+							c[3]=(17*60+45-c_time)%10;
+							display_set_text(&c[0]);
+						}else if((c_time>=17*60+45)&&(c_time<19*60+15)){ // 17:45 - 19:15 Block
+							c[0]='L';
+							c[1]='-';
+							c[2]=(19*60+15-c_time)/10;
+							c[3]=(19*60+15-c_time)%10;
+							display_set_text(&c[0]);
+						}else{ //outside of BHT blocks
+							def|=1;
+						}
+					}else{//weekends
+						def|=1;
+					}
+				}else{
+					def|=1;
+				}
+								if(!(def&2)){
+					if((hour>=20)||(hour<7)){//energy save mode between 20:00-07:00
+						display_set_mode(DISPLAY_7SEG_DIM);
+					}else{
+						display_set_mode(DISPLAY_7SEG_BRIGHT);
+					}
+				}
+				if(def&1){
+					fill_time();
+				}				
+				if(ui_menues_check_schedule()==0){
+					switch(ui_input_get_key()){
+						case UI_INPUT_KEY_OK:	bht_display_mode=2;
+										break;
+						case UI_INPUT_KEY_UP: 	bht_display_mode=50;
+											break;
+						case UI_INPUT_KEY_DOWN: bht_display_mode=60;
+											break;
+						case UI_INPUT_KEY_BACK: 		if(I2C_MP3_detected){
+												I2C_MP3_talkTime();
+											}
+											break;
+					}
+				}
+				break;
+				
+		case 2:	bht_i=ui_menues_main_menu_input();
+				if(bht_i==0){//menu canceled
+					bht_display_mode=0;
+				}else if(bht_i==2){//new show mode
+					bht_display_mode=0;
+				}
+				break;
+
+		case 50:	clock_start_stop_watch();
+					fill_temp();
+					bht_display_mode=51;
+					break;
+		case 51:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						bht_display_mode=0;
+					}
+					break;
+		case 60:	clock_start_stop_watch();
+					fill_date();
+					bht_display_mode=61;
+					break;
+		case 61:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						clock_start_stop_watch();
+						bht_display_mode=62;
+						fill_dow_year(0);
+					}
+					break;
+		case 62:	if(clock_get_stop_watch()*4>2000){//2seconds waiting
+						clock_stop_stop_watch();
+						bht_display_mode=0;
+					}
+					break;
+		default: 
+				break;
+	}
+
+
+}
+// End of BHT mode
+
+// Display Mode for Teltower Fußball Verein
+unsigned char tfv_display_mode=0;
+unsigned int tfv_i=0;
+void ui_display_modes_TFV(void){
+	unsigned char min,hour,second,day,month,year,dow;	
+	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_LONG);
+	switch(tfv_display_mode){
+		case 0:	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+				if((second%20>=0)&&(second%20<=16)){
+					fill_time(); // Hier ist die Zeit, wie ich es möchte: 20:21
+				}else if((second%20>=17)&&(second%20<=20)){/*Nur für große Uhr Goliath*/
+					fill_temp();
+				}else{
+					fill_time();
+				}
+				if((dow==3)&&(((min==29)&&(hour==19))||((min==59)&&(hour==20)))){ // Nur Mittwochs 19:29 und 20:59
+					display_set_mode(DISPLAY_7SEG_ZOOM);
+				}else{
+					if((hour>=22)||(hour<8)){//energy save mode between 22:00-08:00
+						display_set_mode(DISPLAY_7SEG_DIM);
+					}else{
+						display_set_mode(DISPLAY_7SEG_BRIGHT);
+					}
+				}
+				if(ui_menues_check_schedule()==0){
+					switch(ui_input_get_key()){
+						case UI_INPUT_KEY_OK:	tfv_display_mode=2;
+										break;
+					}
+				}
+				break;
+
+		case 2:	tfv_i=ui_menues_main_menu_input();
+				if(tfv_i==0){//menu canceled
+					tfv_display_mode=0;
+				}else if(tfv_i==2){//new show mode
+					tfv_display_mode=0;
+				}
+				break;
+		default: 
+				break;
+	}
+
+}
+// End of TFV mode
 
 #endif

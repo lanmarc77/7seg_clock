@@ -26,6 +26,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "irmp.h"
 
 
+#define BUTTON_BACK (!(PINA&0x10))
+#define BUTTON_DOWN (!(PINA&0x20))
+#define BUTTON_OK (!(PINA&0x40))
+#define BUTTON_UP (!(PINA&0x80))
+#define BUTTON_ANY ((PINA&0xF0)!=0xF0)
+#define BUTTON_NONE ((PINA&0xF0)==0xF0)
 /*
 	0xff: no key pressed
 	other see defines below
@@ -147,6 +153,22 @@ unsigned char get_ir_code(void){
 	return 0xFF;
 }
 
+#define B_NONE 0
+#define B_OK 1
+#define B_BACK 2
+#define B_DOWN 3
+#define B_UP 4
+unsigned char last_button_press=B_NONE;
+
+unsigned char get_button_code(void){
+	cli();
+	unsigned char c=last_button_press;
+	last_button_press=B_NONE;
+	sei();
+	return c;
+}
+
+
 unsigned char ui_input_simulated=UI_INPUT_KEY_NONE;
 void ui_input_simulate(unsigned char k){
 	ui_input_simulated=k;
@@ -159,6 +181,12 @@ unsigned char ui_input_get_key(void){
 		case IR_CH_MINUS:return UI_INPUT_KEY_DOWN;break;
 		case IR_MUTE:return UI_INPUT_KEY_OK;break;
 		case IR_POWER:return UI_INPUT_KEY_BACK;break;
+	}
+	switch(get_button_code()){
+		case B_OK: return UI_INPUT_KEY_OK;break;
+		case B_BACK:return UI_INPUT_KEY_BACK;break;
+		case B_DOWN: return UI_INPUT_KEY_DOWN;break;
+		case B_UP:return UI_INPUT_KEY_UP;break;
 	}
 	if(ui_input_simulated!=UI_INPUT_KEY_NONE){
 		ui_input_simulated=UI_INPUT_KEY_NONE;
@@ -441,11 +469,61 @@ signed int ui_input_code(void){
 	return -2;
 }
 
+unsigned int button_debounce=0;
+unsigned char button_sm=0;
+
+extern void ui_input_ISR(void){
+	irmp_ISR();
+	
+	switch(button_sm){
+		case 0: if(BUTTON_ANY){
+					button_debounce=500;//50ms
+					button_sm++;
+				 }
+				 break;
+	
+		case 1: button_debounce--;
+				if(button_debounce==0){
+					if(BUTTON_ANY){
+						if(BUTTON_OK){
+							cli();last_button_press=B_OK;sei();
+						}else if(BUTTON_BACK){
+							cli();last_button_press=B_BACK;sei();
+						}else if(BUTTON_UP){
+							cli();last_button_press=B_UP;sei();
+						}else if(BUTTON_DOWN){
+							cli();last_button_press=B_DOWN;sei();
+						}
+						button_sm++;
+					}else{
+						button_sm=0;
+					}
+				}
+				break;
+	
+		case 2: if(BUTTON_NONE){
+					button_debounce=500;//50ms
+					button_sm++;
+				}
+				break;
+
+		case 3: button_debounce--;
+				if(button_debounce==0){
+					button_debounce=0;
+					button_sm=0;
+				}
+				break;
+	}
+	
+}
 
 void ui_input_init(void){
 	//RC5 signal
 	DDRC&=~0x40;
 	PORTC|=0x40; //enable internal pullup
+	DDRA&=~0xF0; //PA4..P7 button input
+	PORTA|=0xF0; //enable internal pullups for buttons
+	button_sm=0;
 }
 
 #endif

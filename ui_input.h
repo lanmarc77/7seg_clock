@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define UI_INPUT_H
 
 extern unsigned char ui_input_number(unsigned char *number,unsigned char min,unsigned char max,unsigned int timeout);
+extern void ui_input_ISR(void);
 
 #define UI_INPUT_KEY_NONE 0
 #define UI_INPUT_KEY_OK 1

@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <avr/delay.h>
 #include "settings.h"
 #include "TWI_Master.h"
-#include "irmp.h"
+//#include "irmp.h"
 
 
 #include "ui_display_modes.h"
@@ -65,7 +65,7 @@ ISR(TIMER0_COMP_vect){//every 50µs;main worker ISR
 	if(irmp_isr_part_counter==2){//10khz
 		irmp_isr_part_counter=0;
 		wdt_reset();
-		irmp_ISR();
+		ui_input_ISR();
 		dsd=display_ISR();
 		beeper_ISR();
 		dcf77_isr_part_counter++;
@@ -202,6 +202,8 @@ int main (void)
 								case 5:ui_display_modes_bin();break;
 								case 6:ui_display_modes_C2();break;
 								case 7:ui_display_modes_C3();break;
+								case 8:ui_display_modes_BHT();break;
+								case 9:ui_display_modes_TFV();break;
 								default: ui_display_modes_simple();break;
 							}
 						}

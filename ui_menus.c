@@ -400,7 +400,7 @@ unsigned int set_show_mode(void){
 						case UI_INPUT_KEY_BACK: show_mode_display_mode=0;
 										return 0;
 										break;
-						case UI_INPUT_KEY_DOWN: 	if(t_show_mode<7){t_show_mode++;};clock_stop_stop_watch();clock_start_stop_watch();
+						case UI_INPUT_KEY_DOWN: 	if(t_show_mode<9){t_show_mode++;};clock_stop_stop_watch();clock_start_stop_watch();
 											break;
 						case UI_INPUT_KEY_UP: 	if(t_show_mode!=0){t_show_mode--;};clock_stop_stop_watch();clock_start_stop_watch();
 											break;
@@ -425,6 +425,10 @@ unsigned int set_show_mode(void){
 						case 6:	display_set_text("  C2");
 								break;
 						case 7:	display_set_text("  C3");
+								break;
+						case 8:	display_set_text(" BHT");
+								break;
+						case 9:	display_set_text(" TVF");
 								break;
 						default:display_set_text("____");
 								break;

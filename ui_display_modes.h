@@ -38,6 +38,8 @@ extern void ui_display_modes_TE(void);
 extern void ui_display_modes_C1(void);
 extern void ui_display_modes_C2(void);
 extern void ui_display_modes_C3(void);
+extern void ui_display_modes_BHT(void);
+extern void ui_display_modes_TFV(void);
 extern void ui_display_modes_simple(void);
 extern unsigned char ui_display_modes_version(void);
 

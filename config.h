@@ -66,9 +66,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	 added support for I2C button/ir module
 013: code can now be changed and is stored in eeprom
 	 new way of entering code to avoid eves dropping
+014: added more modes, started moving to compile based define features
 
 */
 
-#define VERSION "v013"
+#define VERSION "v014"
 
 #endif
