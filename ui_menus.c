@@ -428,7 +428,7 @@ unsigned int set_show_mode(void){
 								break;
 						case 8:	display_set_text(" BHT");
 								break;
-						case 9:	display_set_text(" TVF");
+						case 9:	display_set_text(" TFV");
 								break;
 						default:display_set_text("____");
 								break;

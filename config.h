@@ -67,9 +67,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 013: code can now be changed and is stored in eeprom
 	 new way of entering code to avoid eves dropping
 014: added more modes, started moving to compile based define features
-
+015: fixed errors in VHT and TFV modes
 */
 
-#define VERSION "v014"
+#define VERSION "v015"
 
 #endif
