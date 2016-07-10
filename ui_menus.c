@@ -378,7 +378,7 @@ unsigned int stop_time(void){
 	return 1;
 }
 
-
+/*
 unsigned char t_anim_mode=0;
 unsigned char t_show_mode=0;
 unsigned char show_mode_display_mode=0;
@@ -479,7 +479,7 @@ unsigned int set_show_mode(void){
 	return 1;
 }
 
-
+*/
 unsigned char t_dst_mode=0;
 unsigned char setup_time_display_mode=0;
 unsigned char st_new_day=0,st_new_mon=0,st_new_year=0,st_new_dow=0,st_new_hour=0,st_new_min=0;
@@ -1308,13 +1308,12 @@ unsigned int setup_schedule(void){
 unsigned char main_menu_display_mode=0;
 unsigned char amb_track=1;
 unsigned char slp_track=1;
-unsigned char dot_setup=UI_DISPLAY_MODES_DOT_MODE_DOT;
+//unsigned char dot_setup=UI_DISPLAY_MODES_DOT_MODE_DOT;
 unsigned char mp3_volume=55;
 //0 if the menu was exited
 //1 still busy
 //2 if the show mode was changed
 unsigned int ui_menues_main_menu_input(void){
-	unsigned char c=0;
 	signed int code=0;
 	char text[8];
 	switch(main_menu_display_mode){
@@ -1334,15 +1333,15 @@ unsigned int ui_menues_main_menu_input(void){
 									break;
 					case UI_INPUT_KEY_UP: 	main_menu_display_mode=2;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
-					case UI_INPUT_KEY_DOWN: if(ui_display_modes_get_fixed_mode()){
+					case UI_INPUT_KEY_DOWN: //if(ui_display_modes_get_fixed_mode()){
 											if(I2C_MP3_detected){
 												main_menu_display_mode=17;
 											}else{
-												main_menu_display_mode=5;
+												main_menu_display_mode=7;
 											}
-										}else{
-											main_menu_display_mode=18;
-										}
+										//}else{
+											//main_menu_display_mode=18;
+										//}
 										clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 					case UI_INPUT_KEY_OK: 	main_menu_display_mode=40;clock_stop_stop_watch();clock_start_stop_watch();
@@ -1395,7 +1394,7 @@ unsigned int ui_menues_main_menu_input(void){
 					case UI_INPUT_KEY_BACK: 	main_menu_display_mode=0;
 									return 0;
 									break;
-					case UI_INPUT_KEY_UP: 	main_menu_display_mode=5;clock_stop_stop_watch();clock_start_stop_watch();
+					case UI_INPUT_KEY_UP: 	main_menu_display_mode=6;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=3;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
@@ -1404,7 +1403,7 @@ unsigned int ui_menues_main_menu_input(void){
 				}
 				display_set_text("Schd");
 				break;
-		case 5:	if(clock_get_stop_watch()*4>10000){//10seconds waiting
+		/*case 5:	if(clock_get_stop_watch()*4>10000){//10seconds waiting
 						main_menu_display_mode=0;
 						return 0;
 				}
@@ -1420,7 +1419,7 @@ unsigned int ui_menues_main_menu_input(void){
 										break;
 				}
 				display_set_text("Dot ");
-				break;
+				break;*/
 		case 6:	if(clock_get_stop_watch()*4>10000){//10seconds waiting
 						main_menu_display_mode=0;
 						return 0;
@@ -1431,9 +1430,9 @@ unsigned int ui_menues_main_menu_input(void){
 									break;
 					case UI_INPUT_KEY_UP: 	main_menu_display_mode=7;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
-					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=5;clock_stop_stop_watch();clock_start_stop_watch();
+					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=4;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
-					case UI_INPUT_KEY_OK: 	dot_setup=ui_display_modes_get_dot_mode();main_menu_display_mode=150;clock_stop_stop_watch();clock_start_stop_watch();
+					case UI_INPUT_KEY_OK: 	main_menu_display_mode=150;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 				}
 				display_set_text("PW  ");
@@ -1450,10 +1449,11 @@ unsigned int ui_menues_main_menu_input(void){
 					case UI_INPUT_KEY_UP: 	clock_stop_stop_watch();clock_start_stop_watch();
 										if(I2C_MP3_detected){
 											main_menu_display_mode=15;
-										}else if(ui_display_modes_get_fixed_mode()){
-											main_menu_display_mode=1;
+										//}else if(ui_display_modes_get_fixed_mode()){
+										//	main_menu_display_mode=1;
 										}else{
-											main_menu_display_mode=18;
+											//main_menu_display_mode=18;
+											main_menu_display_mode=1;
 										}
 										break;
 					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=6;clock_stop_stop_watch();clock_start_stop_watch();
@@ -1510,11 +1510,11 @@ unsigned int ui_menues_main_menu_input(void){
 					case UI_INPUT_KEY_BACK: 	main_menu_display_mode=0;
 									return 0;
 									break;
-					case UI_INPUT_KEY_UP: 	if(ui_display_modes_get_fixed_mode()){
+					case UI_INPUT_KEY_UP: 	//if(ui_display_modes_get_fixed_mode()){
 											main_menu_display_mode=1;
-										}else{
-											main_menu_display_mode=18;
-										}
+										//}else{
+										//	main_menu_display_mode=18;
+										//}
 										clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=16;clock_stop_stop_watch();clock_start_stop_watch();
@@ -1527,7 +1527,7 @@ unsigned int ui_menues_main_menu_input(void){
 				}
 				display_set_text("Slp ");
 				break;
-		case 18:	if(clock_get_stop_watch()*4>10000){//10seconds waiting
+		/*case 18:	if(clock_get_stop_watch()*4>10000){//10seconds waiting
 						main_menu_display_mode=0;
 						return 0;
 				}
@@ -1548,7 +1548,7 @@ unsigned int ui_menues_main_menu_input(void){
 										break;
 				}
 				display_set_text("Mode");
-				break;
+				break;*/
 
 		case 40:	if(stop_time()==0){
 						main_menu_display_mode=1;clock_stop_stop_watch();clock_start_stop_watch();
@@ -1558,14 +1558,14 @@ unsigned int ui_menues_main_menu_input(void){
 						main_menu_display_mode=3;clock_stop_stop_watch();clock_start_stop_watch();
 					}
 					break;
-		case 60:	c=set_show_mode();
+/*		case 60:	c=set_show_mode();
 					if(c==0){
 						main_menu_display_mode=18;clock_stop_stop_watch();clock_start_stop_watch();
 					}else if(c==2){
 						main_menu_display_mode=0;clock_stop_stop_watch();clock_start_stop_watch();
 						return 2;
 					}
-					break;
+					break;*/
 		case 70:	if(setup_dimm()==0){
 						main_menu_display_mode=7;clock_stop_stop_watch();clock_start_stop_watch();
 					}
@@ -1678,7 +1678,7 @@ unsigned int ui_menues_main_menu_input(void){
 				}
 				display_set_text(&text[0]);
 				break;
-		case 140:if(clock_get_stop_watch()*4>10000){//10seconds waiting
+/*		case 140:if(clock_get_stop_watch()*4>10000){//10seconds waiting
 					main_menu_display_mode=5;clock_stop_stop_watch();clock_start_stop_watch();
 				}
 				switch(ui_input_get_key()){
@@ -1712,7 +1712,7 @@ unsigned int ui_menues_main_menu_input(void){
 					case UI_DISPLAY_MODES_DOT_MODE_COLON_DCF:display_set_text("cdcf");
 							break;
 				}
-				break;
+				break;*/
 		case 150:	if(setup_code()==0){
 						main_menu_display_mode=6;clock_stop_stop_watch();clock_start_stop_watch();
 					}

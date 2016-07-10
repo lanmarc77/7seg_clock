@@ -21,15 +21,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern void display_7seg_init(void);
 extern unsigned char display_7seg_ISR(void);
 
-#define DISPLAY_7SEG_ANIM_OFF 0
+extern void display_7seg_anim_on(void);
+
+/*#define DISPLAY_7SEG_ANIM_OFF 0
 #define DISPLAY_7SEG_ANIM_ODO 1
 extern void display_7seg_set_anim_mode(unsigned char c);
 extern unsigned char display_7seg_get_anim_mode(void);
-extern void display_7seg_anim_on(void);
+
 
 #define DISPLAY_7SEG_POLARITY_NORMAL 0
 #define DISPLAY_7SEG_POLARITY_INV 1
 extern void display_7seg_set_polarity(unsigned char c);
+*/
 
 #define DISPLAY_7SEG_BRIGHT 0
 #define DISPLAY_7SEG_DIM 1

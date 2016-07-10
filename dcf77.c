@@ -36,7 +36,7 @@ unsigned char dcf77_get_state(void){
 	return dcf_state;
 }
 
-unsigned char dcf77_signal_type=DCF77_SIGNAL_TYPE_INVERTED;
+unsigned char dcf77_signal_type=DCF77_SIGNAL_TYPE;
 
 
 volatile unsigned char filtered_dcf77=0;
@@ -61,7 +61,7 @@ void low_pass_filter(void) {
     // http://en.wikipedia.org/wiki/Low-pass_filter#Continuous-time_low-pass_filters
 
     uint32_t input;
-	if(dcf77_signal_type==DCF77_SIGNAL_TYPE_NORMAL){
+	if(dcf77_signal_type==0){
 		input = ((((DCF77_PIN_NORMAL))>>7)&0x01) * decimal_offset;
 	}else{
 		input = ((((DCF77_PIN_INVERTED))>>7)&0x01) * decimal_offset;
@@ -298,17 +298,6 @@ void dcf77_isr_part(void){
 //			timer1_dcf_counter--;
 //		}
 //	}
-}
-void dcf77_set_signal_type(unsigned char c){
-	if(c==DCF77_SIGNAL_TYPE_NORMAL){
-		dcf77_signal_type=c;
-	}else{
-		dcf77_signal_type=DCF77_SIGNAL_TYPE_INVERTED;
-	}
-}
-
-unsigned char dcf77_get_signal_type(void){
-	return dcf77_signal_type;
 }
 
 

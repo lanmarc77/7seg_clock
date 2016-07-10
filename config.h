@@ -68,8 +68,44 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	 new way of entering code to avoid eves dropping
 014: added more modes, started moving to compile based define features
 015: fixed errors in VHT and TFV modes
+016: modes are now individually compiled
 */
 
-#define VERSION "v015"
+#define VERSION "v016"
+
+#include "compile.h"
 
 #endif
+/*
+//Compile option:value or empty:dependency of other compile options or empty:multilanguage description
+
+UI_DISPLAY_MODE:1::This mode is meant to visualize lesson hour starts and breaks for the vocational school Technik Akademie in Berlin, Germany
+UI_DISPLAY_MODE:2::This mode is meant to visualize lesson hour starts and breaks for the vocational school Werner von Siemens Werksberufschule in Berlin, Germany
+UI_DISPLAY_MODE:3::This mode displays the time in a binary format, using the segments as bits
+UI_DISPLAY_MODE:4::This mode is meant to visualize lesson hour starts and breaks for the vocational school Technische Bildung in Berlin, Germany
+UI_DISPLAY_MODE:5::Shows the current time usually dimmed but switches to full brightness every full hour for one minute
+UI_DISPLAY_MODE:6::Shows the current time and switches automatically to display date and temperature for 5 seconds every 20 seconds
+UI_DISPLAY_MODE:7::Shows only the current time. Dimms the brightness between 22:00-07:00
+UI_DISPLAY_MODE:8::Shows the current time and switches automatically to temperature for 1 seconds every 10 seconds
+UI_DISPLAY_MODE:9::This mode is meant to visualize lesson hour starts and breaks for the Beuth University in Berlin, Germany
+UI_DISPLAY_MODE:10::This mode is meant to support game play of the "Teltower Fussball Verein", a soccer club in Teltow, Germany
+
+UI_DISPLAY_DOT_MODE:0::The seperator dot and the seperator colon between hour and minute is not shown at all
+UI_DISPLAY_DOT_MODE:1::The seperator dot between hour and minute is always on, the colon is off
+UI_DISPLAY_DOT_MODE:2::The seperator dot between hour and minute is reflecting the DCF77 signal and stays fully on, if a valid DCF77 signal was received during the last 24hours(wo RTC)/week(if RTC is built in), the colon is off
+UI_DISPLAY_DOT_MODE:3::The seperator colon between hour and minute is always in, the dot is off
+UI_DISPLAY_DOT_MODE:4::The seperator colon between hour and minute is reflecting the DCF77 signal and stays fully on, if a valid DCF77 signal was received during the last 24hours(wo RTC)/week(if RTC is built in), the dot is off
+
+
+DISPLAY_7SEG_ANIM_MODE:0::no animation is shown, when the clock changes to a new minute
+DISPLAY_7SEG_ANIM_MODE:1::an odo meter like animation is shown, when the clock changes to a new minute
+
+DISPLAY_7SEG_POLARITY:0::normal polarity of the LED 7 segments
+DISPLAY_7SEG_POLARITY:1::inverted polarity of the LED 7 segments
+
+DCF77_SIGNAL_TYPE:0::The DCF77 outputs a normal high active signal (100/200ms pulses are transmitted as high)
+DCF77_SIGNAL_TYPE:1::The DCF77 outputs a low active/inverted signal (100/200ms pulses are transmitted as low)
+
+
+*/
+

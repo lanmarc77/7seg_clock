@@ -29,54 +29,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+unsigned char dot_mode=UI_DISPLAY_DOT_MODE;
 
 
-unsigned char dot_mode=UI_DISPLAY_MODES_DOT_MODE_DOT;
-void ui_display_modes_set_dot_mode(unsigned char c){
-	if(c>UI_DISPLAY_MODES_DOT_MODE_COLON_DCF){
-		c=UI_DISPLAY_MODES_DOT_MODE_DOT;
-	}
-	dot_mode=c;
-}
-
-unsigned char ui_display_modes_get_dot_mode(void){
-	return dot_mode;
-}
-
-
-unsigned char display_mode=0;
-
-unsigned char ui_display_modes_get_mode(void){
-	return display_mode;
-}
-
-void ui_display_modes_set_mode(unsigned char c){
-	cli();
-	if(c>9){
-		c=2;
-	}
-	display_mode=c;
-	sei();
-}
-
-
-unsigned char fixed_mode=0;
-
-void ui_display_modes_set_fixed_mode(unsigned char c){
-	cli();
-	if(c>7){
-		c=2;
-	}
-	fixed_mode=c;
-	sei();
-}
-
-unsigned char ui_display_modes_get_fixed_mode(void){
-	return fixed_mode;
-}
-
- 
-//unsigned char show_dot_flag=1;
 //returns 0-off
 //returns 1-on
 char get_dcf77_signal_dot(void){
@@ -90,13 +45,8 @@ char get_dcf77_signal_dot(void){
 				return 1;
 			}
 		}
-	}else{
-		if(ui_display_modes_get_mode()==6){
-			return 0;
-		}else{
-			return 1;
-		}
 	}
+	return 1;
 }
 
 void fill_date(void){
@@ -178,14 +128,14 @@ void fill_time(void){
 	c[2]=(hour%10)+48;
 	c[4]=min/10+48;
 	c[6]=min%10+48;	
-	if(dot_mode==UI_DISPLAY_MODES_DOT_MODE_DOT){
+	if(dot_mode==1){
 			c[3]='.';
-	}else if(dot_mode==UI_DISPLAY_MODES_DOT_MODE_COLON){
+	}else if(dot_mode==3){
 			c[3]=':';
 	}else if (get_dcf77_signal_dot()){
-		if(dot_mode==UI_DISPLAY_MODES_DOT_MODE_DOT_DCF){
+		if(dot_mode==2){
 			c[3]='.';
-		}else if(dot_mode==UI_DISPLAY_MODES_DOT_MODE_COLON_DCF){
+		}else if(dot_mode==4){
 			c[3]=':';
 		}
 	}
@@ -193,9 +143,17 @@ void fill_time(void){
 	display_set_time(&c[0]);
 }
 
+unsigned long last_temp_req=0;
 void fill_temp(void){
+	unsigned char min,hour,second,day,month,year,dow;
 	signed int temp=0;
+	unsigned long i=0;
 	char c[8];c[1]=' ';c[3]=' ';c[5]=' ';c[7]=' ';
+	
+	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
+	i=second+min*100+hour*10000+day*1000000+month*100000000;
+	
+
 	if(I2C_TEMP_detected){
 		if(I2C_getTemp(&temp)){
 			if(temp>=0){
@@ -222,7 +180,10 @@ void fill_temp(void){
 					c[3]='.';
 				}
 			}
-			display_set_time(&c[0]);
+			if(i!=last_temp_req){
+				display_set_time(&c[0]);
+				last_temp_req=i;
+			}
 		}
 	}else{
 		c[0]='-';c[2]='-';c[4]='-';c[6]='-';
@@ -231,10 +192,10 @@ void fill_temp(void){
 }
 
 
-
+#if UI_DISPLAY_MODE == 1
 unsigned char ta_display_mode=0;
 unsigned int ta_i=0;
-void ui_display_modes_TA(void){
+void ui_display_mode(void){
 	unsigned char min,hour,second,day,month,year,dow;
 	char c[4];
 	unsigned int c_time=0;
@@ -427,10 +388,10 @@ void ui_display_modes_TA(void){
 
 }
 
-
+#elif UI_DISPLAY_MODE == 2
 unsigned char wbs_display_mode=0;
 unsigned int wbs_i=0;
-void ui_display_modes_WBS(void){
+void ui_display_mode(void){
 	char c[4];
 	unsigned char def=0;
 	unsigned int c_time=0;
@@ -620,10 +581,10 @@ void ui_display_modes_WBS(void){
 				break;
 	}
 }
-
+#elif UI_DISPLAY_MODE == 3
 unsigned char bin_display_mode=0;
 unsigned int bin_i=0;
-void ui_display_modes_bin(void){
+void ui_display_mode(void){
 	char c[8];
 	unsigned char min,hour,second,day,month,year,dow;
 	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
@@ -681,10 +642,10 @@ void ui_display_modes_bin(void){
 				break;
 	}
 }
-
+#elif UI_DISPLAY_MODE == 4
 unsigned char te_display_mode=0;
 unsigned int te_i=0;
-void ui_display_modes_TE(void){
+void ui_display_mode(void){
 	char c[4];
 	unsigned char def=0;
 	unsigned int c_time=0;
@@ -848,10 +809,10 @@ void ui_display_modes_TE(void){
 				break;
 	}
 }
-
+#elif UI_DISPLAY_MODE == 5
 unsigned char C1_display_mode=0;
 unsigned int C1_i=0;
-void ui_display_modes_C1(void){
+void ui_display_mode(void){
 	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
 	unsigned char min,hour,second,day,month,year,dow;
 	switch(C1_display_mode){
@@ -932,10 +893,10 @@ void ui_display_modes_C1(void){
 	}
 
 }
-
+#elif UI_DISPLAY_MODE == 6
 unsigned char C2_display_mode=0;
 unsigned int C2_i=0;
-void ui_display_modes_C2(void){
+void ui_display_mode(void){
 	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_LONG);
 	unsigned char min,hour,second,day,month,year,dow;
 	switch(C2_display_mode){
@@ -985,10 +946,11 @@ void ui_display_modes_C2(void){
 
 }
 
+#elif UI_DISPLAY_MODE == 7
 
 unsigned char C3_display_mode=0;
 unsigned int C3_i=0;
-void ui_display_modes_C3(void){
+void ui_display_mode(void){
 	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
 	unsigned char min,hour,second,day,month,year,dow;
 	switch(C3_display_mode){
@@ -1062,13 +1024,13 @@ void ui_display_modes_C3(void){
 
 }
 
-
+#elif UI_DISPLAY_MODE == 8
 
 #define CORR_TEMP -55
 //unsigned long ad_res=0;
 unsigned char simple_display_mode=0;
 unsigned int simple_i=0;
-void ui_display_modes_simple(void){
+void ui_display_mode(void){
 	unsigned char min,hour,second,day,month,year,dow;
 	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_SHORT);
 		switch(simple_display_mode){
@@ -1113,92 +1075,12 @@ void ui_display_modes_simple(void){
 	}
 }
 
-unsigned char version_display_mode=0;
-//0 version display finished
-//1 still busy
-unsigned char ui_display_modes_version(void){
-	char c[4];
-	unsigned char polarity=settings_get(SETTINGS_SEGMENT_MODE);
-	switch(version_display_mode){
-		case 0:	display_set_text(VERSION);
-				clock_stop_stop_watch();
-				clock_start_stop_watch();
-				version_display_mode++;
-				break;
-		case 1:	if(clock_get_stop_watch()*4>2500){//2.5seconds waiting
-					clock_stop_stop_watch();
-					clock_start_stop_watch();
-					display_set_mode(DISPLAY_7SEG_DIM);
-					version_display_mode=2;
-				}
-				break;
-		case 2:	if(clock_get_stop_watch()*4>2500){//2.5seconds waiting
-					clock_stop_stop_watch();
-					version_display_mode=0;
-					display_set_mode(DISPLAY_7SEG_BRIGHT);
-					return 0;
-				}
-				c[0]=' ';
-				c[1]=' ';
-				c[2]=' ';
-				c[3]=' ';
-				if(ui_menues_get_code()>=0){
-					c[2]='P';
-				}
-				if(fixed_mode==0){
-					c[3]=' ';
-				}else{
-					c[3]='F';
-				}
-				if(dcf77_get_signal_type()==DCF77_SIGNAL_TYPE_NORMAL){
-					c[0]='N';
-				}else{
-					c[0]='I';
-				}
-				display_set_text(&c[0]);
-				break;
-		default: break;
-	}
-	switch(ui_input_get_key()){
-			case UI_INPUT_KEY_OK:	if(polarity==DISPLAY_7SEG_POLARITY_NORMAL){
-								polarity=DISPLAY_7SEG_POLARITY_INV;
-							}else{
-								polarity=DISPLAY_7SEG_POLARITY_NORMAL;
-							}
-							display_set_polarity(polarity);
-							settings_save(SETTINGS_SEGMENT_MODE,polarity);
-							clock_stop_stop_watch();clock_start_stop_watch();
-							break;
-			case UI_INPUT_KEY_BACK:	if(fixed_mode==0){
-								fixed_mode=1;
-							}else{
-								fixed_mode=0;
-							}
-							settings_save(SETTINGS_DISPLAY_FIXED_MODE,fixed_mode);
-							clock_stop_stop_watch();clock_start_stop_watch();
-							break;
-			case UI_INPUT_KEY_DOWN:
-							if(dcf77_get_signal_type()==DCF77_SIGNAL_TYPE_NORMAL){
-								dcf77_set_signal_type(DCF77_SIGNAL_TYPE_INVERTED);
-							}else{
-								dcf77_set_signal_type(DCF77_SIGNAL_TYPE_NORMAL);
-							}
-							settings_save(SETTINGS_DCF77_SIGNAL_TYPE,dcf77_get_signal_type());
-							clock_stop_stop_watch();clock_start_stop_watch();
-							break;
-			case UI_INPUT_KEY_UP:
-							ui_menues_set_code(-1);
-							settings_save(SETTINGS_UI_MENUES_CODE_32,ui_menues_get_code()>>8);
-							settings_save(SETTINGS_UI_MENUES_CODE_10,ui_menues_get_code()&0xFF);
-							break;
-	}
-	return 1;
-}
+#elif UI_DISPLAY_MODE == 9
 
 // Display Mode for the Beuth Hochschule für Technik
 unsigned char bht_display_mode=0;
 unsigned int bht_i=0;
-void ui_display_modes_BHT(void){
+void ui_display_mode(void){
 	unsigned char def=0;
 	unsigned int c_time=0;
 	char c[4];
@@ -1362,10 +1244,12 @@ void ui_display_modes_BHT(void){
 }
 // End of BHT mode
 
+#elif UI_DISPLAY_MODE == 10
+
 // Display Mode for Teltower Fußball Verein
 unsigned char tfv_display_mode=0;
 unsigned int tfv_i=0;
-void ui_display_modes_TFV(void){
+void ui_display_mode(void){
 	unsigned char min,hour,second,day,month,year,dow;	
 	ui_menues_set_stop_beep_mode(UI_MENUES_STOP_BEEP_LONG);
 	switch(tfv_display_mode){
@@ -1407,5 +1291,68 @@ void ui_display_modes_TFV(void){
 
 }
 // End of TFV mode
+
+#endif
+
+unsigned char version_display_mode=0;
+//0 version display finished
+//1 still busy
+unsigned char ui_display_modes_version(void){
+	char c[4];
+//	unsigned char polarity=settings_get(SETTINGS_SEGMENT_MODE);
+	switch(version_display_mode){
+		case 0:	display_set_text(VERSION);
+				clock_stop_stop_watch();
+				clock_start_stop_watch();
+				version_display_mode++;
+				break;
+		case 1:	if(clock_get_stop_watch()*4>2500){//2.5seconds waiting
+					clock_stop_stop_watch();
+					clock_start_stop_watch();
+					display_set_mode(DISPLAY_7SEG_DIM);
+					version_display_mode=2;
+				}
+				break;
+		case 2:	if(clock_get_stop_watch()*4>2500){//2.5seconds waiting
+					clock_stop_stop_watch();
+					version_display_mode=0;
+					display_set_mode(DISPLAY_7SEG_BRIGHT);
+					return 0;
+				}
+				c[0]=' ';
+				c[1]=' ';
+				c[2]=' ';
+				c[3]=' ';
+				if(ui_menues_get_code()>=0){
+					c[2]='P';
+				}
+				if(DCF77_SIGNAL_TYPE==0){
+					c[0]='N';
+				}else{
+					c[0]='I';
+				}
+				display_set_text(&c[0]);
+				break;
+		default: break;
+	}
+	switch(ui_input_get_key()){
+			case UI_INPUT_KEY_OK:
+							clock_stop_stop_watch();clock_start_stop_watch();
+							break;
+			case UI_INPUT_KEY_BACK:	
+							clock_stop_stop_watch();clock_start_stop_watch();
+							break;
+			case UI_INPUT_KEY_DOWN:
+							clock_stop_stop_watch();clock_start_stop_watch();
+							break;
+			case UI_INPUT_KEY_UP:
+							ui_menues_set_code(-1);
+							settings_save(SETTINGS_UI_MENUES_CODE_32,ui_menues_get_code()>>8);
+							settings_save(SETTINGS_UI_MENUES_CODE_10,ui_menues_get_code()&0xFF);
+							break;
+	}
+	return 1;
+}
+
 
 #endif

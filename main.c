@@ -114,11 +114,8 @@ int main (void)
 		GICR&=0x1F; //disable all external interrupts
 		
 		//load saved values from EEPROM
-		ui_display_modes_set_mode(settings_get(SETTINGS_DISPLAY_MODE));
 		display_set_dark_level(settings_get(SETTINGS_DARK_BRIGHTNESS));
 		display_set_bright_level(settings_get(SETTINGS_LIGHT_BRIGHTNESS));
-		ui_display_modes_set_fixed_mode(settings_get(SETTINGS_DISPLAY_FIXED_MODE));
-		dcf77_set_signal_type(settings_get(SETTINGS_DCF77_SIGNAL_TYPE));
 		ui_menues_set_cont_mode(settings_get(SETTINGS_CONT_MODE));
 		ui_menues_set_alarm_mode(settings_get(SETTINGS_ALARM_MODE));
 		ui_menues_set_alarm_hour(settings_get(SETTINGS_ALARM_HOUR));
@@ -126,8 +123,6 @@ int main (void)
 		ui_menues_set_alarm_mp3_track(settings_get(SETTINGS_ALARM_MP3_TRACK));
 		ui_menues_load_schedules();
 		clock_set_dst_mode(settings_get(SETTINGS_DST_MODE));
-		display_set_anim_mode(settings_get(SETTINGS_ANIM_MODE));
-		ui_display_modes_set_dot_mode(settings_get(SETTINGS_UI_DISPLAY_DOT_MODE));
 		ui_menues_set_code((settings_get(SETTINGS_UI_MENUES_CODE_32)<<8)|settings_get(SETTINGS_UI_MENUES_CODE_10));
 		
 		sei();
@@ -193,19 +188,7 @@ int main (void)
 						break;
 				case 2:	if(ui_menues_check_alarm()){
 						}else{
-							switch(ui_display_modes_get_mode()){
-								case 0:	ui_display_modes_C1();break;
-								case 1:ui_display_modes_TA();break;
-								case 2:ui_display_modes_simple();break;
-								case 3:ui_display_modes_WBS();break;
-								case 4:ui_display_modes_TE();break;
-								case 5:ui_display_modes_bin();break;
-								case 6:ui_display_modes_C2();break;
-								case 7:ui_display_modes_C3();break;
-								case 8:ui_display_modes_BHT();break;
-								case 9:ui_display_modes_TFV();break;
-								default: ui_display_modes_simple();break;
-							}
+							ui_display_mode();
 						}
 						if(TWI_Get_Data_From_Receiver(&TWI_buf[0])){
 							if(TWI_buf[0]==0x01){//key code via I2C

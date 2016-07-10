@@ -27,11 +27,4 @@ extern void dcf77_isr_part(void); //call every 1ms
 extern unsigned char dcf77_get_state(void);
 extern unsigned char dcf77_get_signal(void);
 
-#define DCF77_SIGNAL_TYPE_NORMAL 0
-#define DCF77_SIGNAL_TYPE_INVERTED 1
-
-extern void dcf77_set_signal_type(unsigned char c);
-extern unsigned char dcf77_get_signal_type(void);
-
-
 #endif

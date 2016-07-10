@@ -124,42 +124,17 @@ unsigned int T_digits_time_counter=0;
 unsigned int T_digits_counter=3;
 
 unsigned char anim_on=0;
-unsigned char anim_mode=DISPLAY_7SEG_ANIM_OFF;
+unsigned char anim_mode=DISPLAY_7SEG_ANIM_MODE;
 
 void display_7seg_anim_on(void){
 	anim_on=1;
 }
 
-void display_7seg_set_anim_mode(unsigned char c){
-	if(c>DISPLAY_7SEG_ANIM_ODO){
-		c=DISPLAY_7SEG_ANIM_OFF;
-	}
-	anim_mode=c;
-}
-
-unsigned char display_7seg_get_anim_mode(void){
-	return anim_mode;
-}
-
-//0:normal
-//1:inverted
-unsigned char segment_mode=DISPLAY_7SEG_POLARITY_INV;
-extern void display_7seg_set_polarity(unsigned char c)
-{
-	cli();
-	if(c>DISPLAY_7SEG_POLARITY_INV){
-		segment_mode=DISPLAY_7SEG_POLARITY_INV;
-	}else{
-		segment_mode=c;
-	}
-	sei();
-}
- unsigned char br_counter=0;
+unsigned char segment_mode=DISPLAY_7SEG_POLARITY;
+unsigned char br_counter=0;
 
 #define PORT_COLON_ON PORTD|=0x80
 #define PORT_COLON_OFF PORTD&=~0x80
-
-
 
 unsigned char dimm_value=40;
 unsigned char bright_value=0;
@@ -203,7 +178,7 @@ unsigned char I_digits[4]={0x88,0x88,0x88,0x88};
 
 
 
- unsigned char SEG_MODE=DISPLAY_7SEG_BRIGHT;
+unsigned char SEG_MODE=DISPLAY_7SEG_BRIGHT;
 unsigned char I_SEG_MODE=DISPLAY_7SEG_BRIGHT;
 extern void display_7seg_set_mode(unsigned char c){
 	I_SEG_MODE=c;
@@ -221,7 +196,7 @@ extern void display_7seg_set_colon_mode(unsigned char c){
 
 
 void set_digit_pattern(unsigned char digit,unsigned char pattern){
-	if(segment_mode==DISPLAY_7SEG_POLARITY_NORMAL){
+	if(segment_mode==0){
 		SEG_PORT=(pattern);
 	}else{
 		SEG_PORT=~(pattern);
@@ -229,7 +204,7 @@ void set_digit_pattern(unsigned char digit,unsigned char pattern){
 }
 
 void enable_digit(unsigned char digit){
-	if(segment_mode==DISPLAY_7SEG_POLARITY_NORMAL){
+	if(segment_mode==0){
 		PORTD&=~(1<<(digit+3));
 	}else{
 		PORTD|=(1<<(digit+3));
@@ -237,7 +212,7 @@ void enable_digit(unsigned char digit){
 }
 
 void all_digits_off(void){
-	if(segment_mode==DISPLAY_7SEG_POLARITY_NORMAL){
+	if(segment_mode==0){
 		PORTD|=0x78;
 	}else{
 		PORTD&=~0x78;
@@ -401,7 +376,7 @@ unsigned char display_7seg_ISR(void){
 	
 	switch (T_digits_state){
 		case 0:	break; //no transition to do
-		case 1:	if((anim_mode==DISPLAY_7SEG_ANIM_OFF)||(anim_on==0)){
+		case 1:	if((anim_mode==0)||(anim_on==0)){
 					digits[0]=I_digits[0];digits[1]=I_digits[1];digits[2]=I_digits[2];digits[3]=I_digits[3];
 					T_digits_state=0;T_digits_counter=3;
 					anim_on=0;
