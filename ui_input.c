@@ -287,11 +287,11 @@ char ir_c[4];
 //2: timeout detected
 //5: all keys number were pressed, result in last_code
 unsigned char ui_input_get_digits(unsigned char keys, unsigned char pw_mode, unsigned int timeout,char *t,unsigned int *res){
-	signed char v=-1;
+//	signed char v=-1;
 	switch (ir_code_mode){
 		case 0:	last_code=0;
 				ir_code_i=0;
-				v=-1;
+//				v=-1;
 				ir_code_value_temp=-1;
 				ir_code_timeout_counter=0;
 				clock_stop_stop_watch();clock_start_stop_watch();

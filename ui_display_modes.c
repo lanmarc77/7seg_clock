@@ -337,16 +337,6 @@ void ui_display_mode(void){
 					}
 				}
 				break;
-
-		/*case 1:	ta_i=ui_input_code();
-				if(ta_i==0){//code insert canceld
-					ta_display_mode=0;
-				}else if(ta_i==1){//code is still entered
-				}else if(ta_i==1306){//code correctly entered
-					ta_display_mode=2;
-				}
-				break;*/
-
 		case 2:	ta_i=ui_menues_main_menu_input();
 				if(ta_i==0){//menu canceled
 					ta_display_mode=0;
@@ -533,16 +523,6 @@ void ui_display_mode(void){
 					}
 				}
 				break;
-
-		/*case 1:	wbs_i=ui_input_code();
-				if(wbs_i==0){//code insert canceld
-					wbs_display_mode=0;
-				}else if(wbs_i==1){//code is still entered
-				}else if(wbs_i==1306){//code correctly entered
-					wbs_display_mode=2;
-				}
-				break;*/
-
 		case 2:	wbs_i=ui_menues_main_menu_input();
 				if(wbs_i==0){//menu canceled
 					wbs_display_mode=0;
@@ -620,16 +600,6 @@ void ui_display_mode(void){
 					}
 				}
 				break;
-
-		/*case 1:	bin_i=ui_input_code();
-				if(bin_i==0){//code insert canceld
-					bin_display_mode=0;
-				}else if(bin_i==1){//code is still entered
-				}else if(bin_i==1306){//code correctly entered
-					bin_display_mode=2;
-				}
-				break;*/
-
 		case 2:	bin_i=ui_menues_main_menu_input();
 				if(bin_i==0){//menu canceled
 					bin_display_mode=0;
@@ -761,16 +731,6 @@ void ui_display_mode(void){
 					}
 				}
 				break;
-
-		/*case 1:	te_i=ui_input_code();
-				if(te_i==0){//code insert canceld
-					te_display_mode=0;
-				}else if(te_i==1){//code is still entered
-				}else if(te_i==1306){//code correctly entered
-					te_display_mode=2;
-				}
-				break;*/
-
 		case 2:	te_i=ui_menues_main_menu_input();
 				if(te_i==0){//menu canceled
 					te_display_mode=0;
@@ -844,16 +804,6 @@ void ui_display_mode(void){
 					}
 				}
 				break;
-
-		/*case 1:	C1_i=ui_input_code();
-				if(C1_i==0){//code insert canceld
-					C1_display_mode=0;
-				}else if(C1_i==1){//code is still entered
-				}else if(C1_i==1306){//code correctly entered
-					C1_display_mode=2;
-				}
-				break;*/
-
 		case 2:	C1_i=ui_menues_main_menu_input();
 				if(C1_i==0){//menu canceled
 					C1_display_mode=0;
@@ -924,15 +874,6 @@ void ui_display_mode(void){
 					}
 				}
 				break;
-		/*case 1:	C2_i=ui_input_code();
-				if(C2_i==0){//code insert canceled
-					C2_display_mode=0;
-				}else if(C2_i==1){//code is still entered
-				}else if(C2_i==1306){//code correctly entered
-					C2_display_mode=2;
-				}
-				break;*/
-
 		case 2:	C2_i=ui_menues_main_menu_input();
 				if(C2_i==0){//menu canceled
 					C2_display_mode=0;
@@ -976,15 +917,6 @@ void ui_display_mode(void){
 					}
 				}
 				break;
-		/*case 1:	C3_i=ui_input_code();
-				if(C3_i==0){//code insert canceled
-					C3_display_mode=0;
-				}else if(C3_i==1){//code is still entered
-				}else if(C3_i==1306){//code correctly entered
-					C3_display_mode=2;
-				}
-				break;*/
-
 		case 2:	C3_i=ui_menues_main_menu_input();
 				if(C3_i==0){//menu canceled
 					C3_display_mode=0;
@@ -1056,15 +988,6 @@ void ui_display_mode(void){
 						}
 					}
 				break;
-
-		/*case 1:	simple_i=ui_input_code();
-				if(simple_i==0){//code insert canceld
-					simple_display_mode=0;;
-				}else if(simple_i==1){//code is still entered
-				}else if(simple_i==1306){//code correctly entered
-					simple_display_mode=2;
-				}
-				break;*/
 		case 2:	simple_i=ui_menues_main_menu_input();
 				if(simple_i==0){//menu canceled
 					simple_display_mode=0;
@@ -1298,8 +1221,6 @@ unsigned char version_display_mode=0;
 //0 version display finished
 //1 still busy
 unsigned char ui_display_modes_version(void){
-	char c[4];
-//	unsigned char polarity=settings_get(SETTINGS_SEGMENT_MODE);
 	switch(version_display_mode){
 		case 0:	display_set_text(VERSION);
 				clock_stop_stop_watch();
@@ -1310,28 +1231,9 @@ unsigned char ui_display_modes_version(void){
 					clock_stop_stop_watch();
 					clock_start_stop_watch();
 					display_set_mode(DISPLAY_7SEG_DIM);
-					version_display_mode=2;
-				}
-				break;
-		case 2:	if(clock_get_stop_watch()*4>2500){//2.5seconds waiting
-					clock_stop_stop_watch();
 					version_display_mode=0;
-					display_set_mode(DISPLAY_7SEG_BRIGHT);
 					return 0;
 				}
-				c[0]=' ';
-				c[1]=' ';
-				c[2]=' ';
-				c[3]=' ';
-				if(ui_menues_get_code()>=0){
-					c[2]='P';
-				}
-				if(DCF77_SIGNAL_TYPE==0){
-					c[0]='N';
-				}else{
-					c[0]='I';
-				}
-				display_set_text(&c[0]);
 				break;
 		default: break;
 	}
