@@ -36,7 +36,7 @@ extern void ui_menues_set_alarm_mode(unsigned char m);
 extern void ui_menues_set_alarm_hour(unsigned char m);
 extern void ui_menues_set_alarm_minute(unsigned char m);
 extern void ui_menues_set_alarm_mp3_track(unsigned char m);
-
+extern void ui_menues_set_mp3_volume(unsigned char m);
 
 extern signed int ui_menues_get_code(void);
 extern void ui_menues_set_code(signed int code);

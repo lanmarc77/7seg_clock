@@ -166,8 +166,10 @@ int main (void)
 				case 0:if(ui_display_modes_version()==0){
 							if(I2C_RTC_detected) {
 								display_mode=2;//2=default
+								ui_menues_set_mp3_volume(settings_get(SETTINGS_MP3_VOLUME));
 							}else{
 								display_mode=1;
+								ui_menues_set_mp3_volume(settings_get(SETTINGS_MP3_VOLUME));
 							}
 						}
 						break;

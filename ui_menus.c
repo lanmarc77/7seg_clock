@@ -55,7 +55,6 @@ unsigned char ui_menues_get_cont_mode(void){
 	return cont_mode;
 }
 
-
 unsigned char setup_code_state=0;
 signed  int setup_code_code_1=0;
 signed  int setup_code_code_2=0;
@@ -1231,7 +1230,7 @@ unsigned int ui_menues_main_menu_input(void){
 										break;
 					case UI_INPUT_KEY_DOWN: //if(ui_display_modes_get_fixed_mode()){
 											if(I2C_MP3_detected){
-												main_menu_display_mode=17;
+												main_menu_display_mode=18;
 											}else{
 												main_menu_display_mode=7;
 											}
@@ -1370,7 +1369,7 @@ unsigned int ui_menues_main_menu_input(void){
 					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=15;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 					case UI_INPUT_KEY_OK: if(I2C_MP3_detected){
-											I2C_MP3_setVol(mp3_volume);
+											I2C_MP3_playAmb(amb_track|0x80);
 										}
 										main_menu_display_mode=110;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
@@ -1386,19 +1385,42 @@ unsigned int ui_menues_main_menu_input(void){
 					case UI_INPUT_KEY_BACK: 	main_menu_display_mode=0;
 									return 0;
 									break;
-					case UI_INPUT_KEY_UP:	main_menu_display_mode=1;
+					case UI_INPUT_KEY_UP:	main_menu_display_mode=18;
 										clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=16;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 					case UI_INPUT_KEY_OK: if(I2C_MP3_detected){
-											I2C_MP3_setVol(mp3_volume);
+											I2C_MP3_playAmb(slp_track);
 										}
 										main_menu_display_mode=120;clock_stop_stop_watch();clock_start_stop_watch();
 										break;
 				}
 				display_set_text("Slp ");
 				break;
+
+		case 18:if(clock_get_stop_watch()*4>10000){//10seconds waiting
+						main_menu_display_mode=0;
+						return 0;
+				}
+				switch(ui_input_get_key()){
+					case UI_INPUT_KEY_BACK: 	main_menu_display_mode=0;
+									return 0;
+									break;
+					case UI_INPUT_KEY_UP:	main_menu_display_mode=1;
+										clock_stop_stop_watch();clock_start_stop_watch();
+										break;
+					case UI_INPUT_KEY_DOWN: 	main_menu_display_mode=17;clock_stop_stop_watch();clock_start_stop_watch();
+										break;
+					case UI_INPUT_KEY_OK: if(I2C_MP3_detected){
+											I2C_MP3_setVol(mp3_volume);
+										}
+										main_menu_display_mode=131;clock_stop_stop_watch();clock_start_stop_watch();
+										break;
+				}
+				display_set_text("Vol ");
+				break;
+				
 		case 40:	if(stop_time()==0){
 						main_menu_display_mode=1;clock_stop_stop_watch();clock_start_stop_watch();
 					}
@@ -1460,7 +1482,9 @@ unsigned int ui_menues_main_menu_input(void){
 					case 4:	if(I2C_MP3_detected){
 								//I2C_MP3_playAmb(amb_track|0x80);
 							}
-							main_menu_display_mode=130;clock_stop_stop_watch();clock_start_stop_watch();
+							//main_menu_display_mode=130;
+							main_menu_display_mode=16;
+							clock_stop_stop_watch();clock_start_stop_watch();
 							break;
 				
 				}
@@ -1482,7 +1506,9 @@ unsigned int ui_menues_main_menu_input(void){
 					case 4:	if(I2C_MP3_detected){
 								//I2C_MP3_playAmb(amb_track);
 							}
-							main_menu_display_mode=130;clock_stop_stop_watch();clock_start_stop_watch();
+							//main_menu_display_mode=130;
+							main_menu_display_mode=17;
+							clock_stop_stop_watch();clock_start_stop_watch();
 							break;
 				}
 				text[0]=' ';text[1]=' ';text[2]=slp_track/10+48;text[3]=slp_track%10+48;
@@ -1501,15 +1527,16 @@ unsigned int ui_menues_main_menu_input(void){
 		case 131:switch(ui_input_number(&mp3_volume,0,255,30000/4)){
 					case 3:
 					case 0:	if(I2C_MP3_detected){
-								I2C_MP3_stopPlaying();
+								//I2C_MP3_stopPlaying();
 							}
-							main_menu_display_mode=0;
+							main_menu_display_mode=18;clock_stop_stop_watch();clock_start_stop_watch();
 							break;
 					case 2:if(I2C_MP3_detected){
 								I2C_MP3_setVol(mp3_volume);
 							}
 							break;
-					case 4:	main_menu_display_mode=0;clock_stop_stop_watch();clock_start_stop_watch();return 0;
+					case 4:	main_menu_display_mode=18;clock_stop_stop_watch();clock_start_stop_watch();settings_save(SETTINGS_MP3_VOLUME, mp3_volume);
+							//return 0;
 							break;
 				}
 				if(255-mp3_volume>=100){
@@ -1540,6 +1567,13 @@ unsigned int ui_menues_main_menu_input(void){
 		default: main_menu_display_mode=0;return 0;break;
 	}
 	return 1;
+}
+
+void ui_menues_set_mp3_volume(unsigned char m){
+	mp3_volume=m;
+	if(I2C_MP3_detected){
+		I2C_MP3_setVol(mp3_volume);
+	}
 }
 
 

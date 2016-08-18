@@ -70,9 +70,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 015: fixed errors in VHT and TFV modes
 016: modes are now individually compiled
 017: textual changes for better understanding of compile options, removed info screen during startup as options are now compiled in, code cleanup
+018: mp3 volume setting is now saved in eeprom and implemented as seperate menu item
 */
 
-#define VERSION "v017"
+#define VERSION "v018"
 
 #include "compile.h"
 
