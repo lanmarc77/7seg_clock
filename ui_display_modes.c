@@ -1184,7 +1184,7 @@ void ui_display_mode(void){
 				}else{
 					fill_time();
 				}
-				if((dow==3)&&(((min==29)&&(hour==19))||((min==59)&&(hour==20)))){ // Nur Mittwochs 19:29 und 20:59
+				if((dow==3)&&(((min==14)&&(hour==19))||((min==59)&&(hour==20)))){ // Nur Mittwochs 19:29 und 20:59
 					display_set_mode(DISPLAY_7SEG_ZOOM);
 				}else{
 					if((hour>=22)||(hour<8)){//energy save mode between 22:00-08:00

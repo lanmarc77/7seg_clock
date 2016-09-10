@@ -135,11 +135,11 @@ int main (void)
 		beeper_init();
 		dcf77_init();
 		for(i=0;i<50;i++){//wait for slower I2C devices to power up themselves
-			_delay_ms(5);wdt_reset();
+			_delay_ms(20);wdt_reset();
 		}
 		I2C_init_modules();
 		for(i=0;i<50;i++){//wait for slower I2C devices to initialize themselves
-			_delay_ms(5);wdt_reset();
+			_delay_ms(20);wdt_reset();
 		}
 		clock_init();
 		
