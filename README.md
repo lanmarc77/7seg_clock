@@ -1,4 +1,4 @@
-# 7seg_clock
+# KaunisKello
 Firmware for open source (hw+sw) 7 segment clock
 
 
