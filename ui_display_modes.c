@@ -856,11 +856,11 @@ void ui_display_mode(void){
 				}else{
 					display_set_mode(DISPLAY_7SEG_BRIGHT);
 				}
-				if((second%20>=0)&&(second%20<=9)){
+				if((second%20>=0)&&(second%20<=11)){
 					fill_time();
-				}else if((second%20>=10)&&(second%20<=14)){
+				}else if((second%20>=12)&&(second%20<=16)){
 					fill_date();
-				}else if((second%20>=15)&&(second%20<=20)){
+				}else if((second%20>=17)&&(second%20<=20)){
 					fill_temp();
 				}
 				if(ui_menues_check_schedule()==0){
