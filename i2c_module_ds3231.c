@@ -92,16 +92,22 @@ char DS3231_setTime(void){
 
 signed char last_RTC_second=-1;
 
+#define DS3231_I2C_ERROR_CNT_MAX 3
+unsigned char DS3231_i2c_error_cnt=0;
+#define DS3231_I2C_WAIT_CNT_MAX 15000
+unsigned int DS3231_i2c_wait_cnt=0;
 
 char DS3231_check_i2c_state_machine(void){
 	unsigned char c_temp=0;
 	unsigned char min,hour,second,day,month,year,dow;
 	switch(DS3231_state){
-		case 0:	if((DS3231_cmd<DS3231_done)&&(DS3231_cmd>0)){
+		case 0:	DS3231_i2c_wait_cnt=0;
+				if((DS3231_cmd<DS3231_done)&&(DS3231_cmd>0)){
 					DS3231_state=1;
 				}
 				break;
-		case 1:	if(DS3231_cmd==DS3231_get_time){
+		case 1:	DS3231_i2c_wait_cnt=0;
+				if(DS3231_cmd==DS3231_get_time){
 					DS3231_messageBuf[0]=(0x68<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 					DS3231_messageBuf[1]=0x00;//setup reading from register 00 means seconds
 					TWI_Start_Transceiver_With_Data( &DS3231_messageBuf[0], 2 );
@@ -126,9 +132,30 @@ char DS3231_check_i2c_state_machine(void){
 						DS3231_messageBuf[0]=(0x68<<TWI_ADR_BITS) | (TRUE<<TWI_READ_BIT);
 						TWI_Start_Transceiver_With_Data( &DS3231_messageBuf[0], 20);
 						DS3231_state++;
+						DS3231_i2c_error_cnt=0;
 					}else{
-						DS3231_cmd+=DS3231_done;
-						DS3231_state=0;
+						DS3231_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(DS3231_i2c_error_cnt>DS3231_I2C_ERROR_CNT_MAX){//ok give up
+							DS3231_cmd+=DS3231_done;
+							DS3231_state=0;
+							DS3231_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							DS3231_state=1;
+						}
+					}
+				}else{
+					DS3231_i2c_wait_cnt++;
+					if(DS3231_i2c_wait_cnt>DS3231_I2C_WAIT_CNT_MAX){
+						DS3231_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(DS3231_i2c_error_cnt>DS3231_I2C_ERROR_CNT_MAX){//ok give up
+							DS3231_cmd+=DS3231_done;
+							DS3231_state=0;
+							DS3231_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							DS3231_state=1;
+						}
 					}
 				}
 				break;
@@ -177,16 +204,64 @@ char DS3231_check_i2c_state_machine(void){
 							case 3:DS3231_temp+=8;
 									break;
 						}
+						DS3231_cmd+=DS3231_done;
+						DS3231_state=0;
+						DS3231_i2c_error_cnt=0;
+					}else{
+						DS3231_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(DS3231_i2c_error_cnt>DS3231_I2C_ERROR_CNT_MAX){//ok give up
+							DS3231_cmd+=DS3231_done;
+							DS3231_state=0;
+							DS3231_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							DS3231_state=1;
+						}
 					}
-					DS3231_cmd+=DS3231_done;
-					DS3231_state=0;
+				}else{
+					DS3231_i2c_wait_cnt++;
+					if(DS3231_i2c_wait_cnt>DS3231_I2C_WAIT_CNT_MAX){
+						DS3231_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(DS3231_i2c_error_cnt>DS3231_I2C_ERROR_CNT_MAX){//ok give up
+							DS3231_cmd+=DS3231_done;
+							DS3231_state=0;
+							DS3231_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							DS3231_state=1;
+						}
+					}
 				}
 				break;
 		case 40:if(!(TWI_Transceiver_Busy() )){
 					if ( TWI_statusReg.lastTransOK ){
+						DS3231_cmd+=DS3231_done;
+						DS3231_state=0;
+						DS3231_i2c_error_cnt=0;
+					}else{
+						DS3231_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(DS3231_i2c_error_cnt>DS3231_I2C_ERROR_CNT_MAX){//ok give up
+							DS3231_cmd+=DS3231_done;
+							DS3231_state=0;
+							DS3231_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							DS3231_state=1;
+						}
 					}
-					DS3231_cmd+=DS3231_done;
-					DS3231_state=0;
+				}else{
+					DS3231_i2c_wait_cnt++;
+					if(DS3231_i2c_wait_cnt>DS3231_I2C_WAIT_CNT_MAX){
+						DS3231_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(DS3231_i2c_error_cnt>DS3231_I2C_ERROR_CNT_MAX){//ok give up
+							DS3231_cmd+=DS3231_done;
+							DS3231_state=0;
+							DS3231_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							DS3231_state=1;
+						}
+					}
 				}
 				break;
 	}

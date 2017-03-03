@@ -29,7 +29,7 @@
 #define TWI_RX_BUFFER_SIZE 10   // Set this to the largest message size that will be received
 #define TWI_BUFFER_SIZE 30   // Set this to the largest message size that will be sent including address byte.
 
-#define TWI_TWBR            0x10        // TWI Bit rate Register setting.
+#define TWI_TWBR            0x80        // TWI Bit rate Register setting., was 0x10 before
                                         // Se Application note for detailed 
                                         // information on setting this value.
 // Not used defines!

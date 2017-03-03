@@ -72,9 +72,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 017: textual changes for better understanding of compile options, removed info screen during startup as options are now compiled in, code cleanup
 018: mp3 volume setting is now saved in eeprom and implemented as seperate menu item
 019: changed TVF mode start time to 19:15 (from 19:30), increased initial access to I2C to give slow devices more time for init
+01A: made I2C more error resistant with command retries, decreased bus speed, removed I2C wait deadlock
 */
 
-#define VERSION "v019"
+#define VERSION "v01A"
 
 #include "compile.h"
 

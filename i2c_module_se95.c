@@ -66,12 +66,17 @@ unsigned char SE95_getTemp(signed int *temp){
 	}
 	return 0;
 }
-
+#define SE95_I2C_ERROR_CNT_MAX 3
+unsigned char SE95_i2c_error_cnt=0;
+#define SE95_I2C_WAIT_CNT_MAX 15000
+unsigned int SE95_i2c_wait_cnt=0;
 
 char SE95_check_i2c_state_machine(void){
 
 	switch(SE95_state){
-		case 0:	if(SE95_cmd==SE95_get_temp){
+		case 1:
+		case 0:	SE95_i2c_wait_cnt=0;
+				if(SE95_cmd==SE95_get_temp){
 					se95_messageBuf[0]=(0x48<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 					se95_messageBuf[1]=0x00;//setup reading from register 00 means temperature
 					TWI_Start_Transceiver_With_Data( &se95_messageBuf[0], 2 );
@@ -83,9 +88,30 @@ char SE95_check_i2c_state_machine(void){
 						se95_messageBuf[0]=(0x48<<TWI_ADR_BITS) | (TRUE<<TWI_READ_BIT);
 						TWI_Start_Transceiver_With_Data( &se95_messageBuf[0], 3);
 						SE95_state++;
+						SE95_i2c_error_cnt=0;
 					}else{
-						SE95_cmd+=SE95_error;
-						SE95_state=0;
+						SE95_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(SE95_i2c_error_cnt>SE95_I2C_ERROR_CNT_MAX){//ok give up
+							SE95_cmd+=SE95_error;
+							SE95_state=0;
+							SE95_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							SE95_state=1;
+						}
+					}
+				}else{
+					SE95_i2c_wait_cnt++;
+					if(SE95_i2c_wait_cnt>SE95_I2C_WAIT_CNT_MAX){
+						SE95_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(SE95_i2c_error_cnt>SE95_I2C_ERROR_CNT_MAX){//ok give up
+							SE95_state=0;
+							SE95_cmd+=SE95_error;
+							SE95_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							SE95_state=1;
+						}
 					}
 				}
 				break;
@@ -97,9 +123,33 @@ char SE95_check_i2c_state_machine(void){
 						SE95_temp_frac=(SE95_temp)&0x1F;
 						SE95_temp>>=5;//reduce to 1 centigrade resolution
 						sei();
+						SE95_i2c_error_cnt=0;
+						SE95_cmd+=SE95_done;
+						SE95_state=0;
+					}else{
+						SE95_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(SE95_i2c_error_cnt>SE95_I2C_ERROR_CNT_MAX){//ok give up
+							SE95_cmd+=SE95_error;
+							SE95_state=0;
+							SE95_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							SE95_state=1;
+						}
 					}
-					SE95_cmd+=SE95_done;
-					SE95_state=0;
+				}else{
+					SE95_i2c_wait_cnt++;
+					if(SE95_i2c_wait_cnt>SE95_I2C_WAIT_CNT_MAX){
+						SE95_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(SE95_i2c_error_cnt>SE95_I2C_ERROR_CNT_MAX){//ok give up
+							SE95_state=0;
+							SE95_cmd+=SE95_error;
+							SE95_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							SE95_state=1;
+						}
+					}
 				}
 				break;
 	}

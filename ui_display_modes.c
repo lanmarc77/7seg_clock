@@ -929,6 +929,7 @@ void ui_display_mode(void){
 					C3_display_mode=51;
 					break;
 		case 51:	fill_temp();
+					C3_display_mode=51;
 					if(clock_get_stop_watch()*4>2000){//2seconds waiting
 						clock_stop_stop_watch();
 						C3_display_mode=0;

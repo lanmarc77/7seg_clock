@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <avr/io.h>
 #include "TWI_Master.h"
 
+unsigned char I2CErrorCount=0;
+
 #include "i2c_module_mp3.c"
 #include "i2c_module_ds3231.c"
 #include "i2c_module_se95.c"
@@ -32,6 +34,15 @@ unsigned char I2C_RADIO_detected=0;
 unsigned char I2C_MP3_detected=0;
 unsigned char I2C_MOTION_detected=0;
 volatile unsigned char I2C_busy=0;
+
+unsigned char I2C_getBusy(void){
+	return I2C_busy;
+}
+
+unsigned char I2C_getErrorCount(void){
+	return I2CErrorCount;
+}
+
 
 void I2C_init_modules(void){
 	if(SE95_detect()){

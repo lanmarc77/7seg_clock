@@ -258,12 +258,18 @@ unsigned char MP3_setVol(unsigned char vol){
 	return 0;
 }
 
+#define MP3_I2C_ERROR_CNT_MAX 3
+unsigned char MP3_i2c_error_cnt=0;
+#define MP3_I2C_WAIT_CNT_MAX 15000
+unsigned int MP3_i2c_wait_cnt=0;
 
 char MP3_check_i2c_state_machine(void){
 	unsigned char min,hour,second,day,month,year,dow;
 	clock_get_time(&min,&hour,&second,&day,&month,&year,&dow);
 	switch(MP3_state){
-		case 0:	if(MP3_cmd==MP3_stop){
+		case 1:
+		case 0:	MP3_i2c_wait_cnt=0;
+				if(MP3_cmd==MP3_stop){
 					MP3_messageBuf[0]=(0x22<<TWI_ADR_BITS) | (FALSE<<TWI_READ_BIT);
 					MP3_messageBuf[1]=0x07;
 					MP3_messageBuf[2]=1;
@@ -322,9 +328,33 @@ char MP3_check_i2c_state_machine(void){
 				break;
 		case 10:if(!(TWI_Transceiver_Busy() )){
 					if ( TWI_statusReg.lastTransOK ){
+						MP3_cmd=0;
+						MP3_state=0;
+						MP3_i2c_error_cnt=0;
+					}else{
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
 					}
-					MP3_cmd=0;
-					MP3_state=0;
+				}else{
+					MP3_i2c_wait_cnt++;
+					if(MP3_i2c_wait_cnt>MP3_I2C_WAIT_CNT_MAX){
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
+					}
 				}
 				break;	
 		case 20:if(!(TWI_Transceiver_Busy() )){
@@ -334,9 +364,30 @@ char MP3_check_i2c_state_machine(void){
 						MP3_messageBuf[2]=MP3_track;
 						TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 						MP3_state=10;
+						MP3_i2c_error_cnt=0;
 					}else{
-						MP3_cmd=0;
-						MP3_state=0;
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
+					}
+				}else{
+					MP3_i2c_wait_cnt++;
+					if(MP3_i2c_wait_cnt>MP3_I2C_WAIT_CNT_MAX){
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
 					}
 				}
 				break;	
@@ -347,10 +398,30 @@ char MP3_check_i2c_state_machine(void){
 						MP3_messageBuf[2]=day;
 						TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 						MP3_state=31;
+						MP3_i2c_error_cnt=0;
 					}else{
-						//MP3_cmd+=MP3_done;
-						MP3_cmd=0;
-						MP3_state=0;
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
+					}
+				}else{
+					MP3_i2c_wait_cnt++;
+					if(MP3_i2c_wait_cnt>MP3_I2C_WAIT_CNT_MAX){
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
 					}
 				}
 				break;
@@ -361,10 +432,30 @@ char MP3_check_i2c_state_machine(void){
 						MP3_messageBuf[2]=month;
 						TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 						MP3_state=32;
+						MP3_i2c_error_cnt=0;
 					}else{
-						//MP3_cmd+=MP3_done;
-						MP3_cmd=0;
-						MP3_state=0;
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
+					}
+				}else{
+					MP3_i2c_wait_cnt++;
+					if(MP3_i2c_wait_cnt>MP3_I2C_WAIT_CNT_MAX){
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
 					}
 				}
 				break;
@@ -375,18 +466,62 @@ char MP3_check_i2c_state_machine(void){
 						MP3_messageBuf[2]=min;
 						TWI_Start_Transceiver_With_Data( &MP3_messageBuf[0], 3 );
 						MP3_state=33;
+						MP3_i2c_error_cnt=0;
 					}else{
-						//MP3_cmd+=MP3_done;
-						MP3_cmd=0;
-						MP3_state=0;
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
+					}
+				}else{
+					MP3_i2c_wait_cnt++;
+					if(MP3_i2c_wait_cnt>MP3_I2C_WAIT_CNT_MAX){
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
 					}
 				}
 				break;
 		case 33:if(!(TWI_Transceiver_Busy() )){
 					if ( TWI_statusReg.lastTransOK ){
+						MP3_cmd=0;
+						MP3_state=0;
+						MP3_i2c_error_cnt=0;
+					}else{
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
 					}
-					MP3_cmd=0;
-					MP3_state=0;
+				}else{
+					MP3_i2c_wait_cnt++;
+					if(MP3_i2c_wait_cnt>MP3_I2C_WAIT_CNT_MAX){
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
+					}
 				}
 				break;	
 		case 40:if(!(TWI_Transceiver_Busy() )){
@@ -398,18 +533,62 @@ char MP3_check_i2c_state_machine(void){
 						//MP3_cmd+=MP3_done;
 						MP3_cmd=0;
 						MP3_state=41;
+						MP3_i2c_error_cnt=0;
 					}else{
-						//MP3_cmd+=MP3_done;
-						MP3_cmd=0;
-						MP3_state=0;
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
+					}
+				}else{
+					MP3_i2c_wait_cnt++;
+					if(MP3_i2c_wait_cnt>MP3_I2C_WAIT_CNT_MAX){
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
 					}
 				}
 				break;
 		case 41:if(!(TWI_Transceiver_Busy() )){
 					if ( TWI_statusReg.lastTransOK ){
+						MP3_cmd=0;
+						MP3_state=0;
+						MP3_i2c_error_cnt=0;
+					}else{
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
 					}
-					MP3_cmd=0;
-					MP3_state=0;
+				}else{
+					MP3_i2c_wait_cnt++;
+					if(MP3_i2c_wait_cnt>MP3_I2C_WAIT_CNT_MAX){
+						MP3_i2c_error_cnt++;
+						TWI_Master_Stop();TWI_MasterSlave_Initialise();I2CErrorCount++; //reset I2C module
+						if(MP3_i2c_error_cnt>MP3_I2C_ERROR_CNT_MAX){//ok give up
+							MP3_state=0;
+							MP3_cmd=0;
+							MP3_i2c_error_cnt=0;
+						}else{//retry same command from scratch
+							MP3_state=1;
+						}
+					}
 				}
 				break;	
 	}

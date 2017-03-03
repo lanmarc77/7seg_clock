@@ -31,6 +31,8 @@ extern unsigned char I2C_LIGHT_detected;
 /* global functions */
 extern void I2C_init_modules(void);
 extern void I2C_check_state_machines(void);
+extern unsigned char I2C_getErrorCount(void);
+extern unsigned char I2C_getBusy(void);
 
 
 /* RTC functions */

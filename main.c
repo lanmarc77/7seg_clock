@@ -138,7 +138,7 @@ int main (void)
 			_delay_ms(20);wdt_reset();
 		}
 		I2C_init_modules();
-		for(i=0;i<50;i++){//wait for slower I2C devices to initialize themselves
+		for(i=0;i<250;i++){//wait for slower I2C devices to initialize themselves
 			_delay_ms(20);wdt_reset();
 		}
 		clock_init();
